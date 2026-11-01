@@ -411,14 +411,28 @@ const HAP={
 const HAP_LABEL={good:'良いこと',bad:'悪いこと',trick:'駆け引き'};
 /* アクションカードには行動が上から5つ並ぶ。使えるのは上から「船員の数＋1」個まで */
 const ACTION_SET=[
-  [['sail','cash','recruit','stormsea','raid'],8],
-  [['sail','raid','repair','cash','recruit'],8],
-  [['recruit','repair','sail','cash','chart'],7],
-  [['deep','chart','recruit','cash','anchor'],6],
-  [['chart','raid','sell','cash','repair'],6],
-  [['anchor','repair','raid','dispatch','cash'],6],
-  [['cash','raid','deep','recruit','sail'],4],
-  [['stormsea','sell','dispatch','sail','cash'],5]
+  [['sail','cash','recruit','stormsea','raid'],3],
+  [['cash','sail','raid','deep','anchor'],3],
+  [['sail','raid','repair','cash','recruit'],3],
+  [['raid','sail','chart','recruit','cash'],2],
+  [['recruit','repair','sail','cash','chart'],2],
+  [['repair','recruit','deep','raid','cash'],2],
+  [['deep','chart','recruit','cash','anchor'],3],
+  [['chart','deep','sell','cash','raid'],2],
+  [['cash','raid','deep','recruit','sail'],3],
+  [['raid','cash','dispatch','sail','repair'],2],
+  [['anchor','repair','raid','dispatch','cash'],2],
+  [['sail','anchor','cash','stormsea','recruit'],2],
+  [['stormsea','sell','dispatch','sail','cash'],2],
+  [['stormsea','sail','cash','raid','repair'],2],
+  [['recruit','deep','chart','stormsea','cash'],3],
+  [['deep','recruit','anchor','sail','sell'],2],
+  [['sell','dispatch','stormsea','recruit','cash'],1],
+  [['dispatch','stormsea','recruit','cash','raid'],1],
+  [['recruit','sail','raid','cash','deep'],3],
+  [['cash','stormsea','anchor','recruit','chart'],3],
+  [['sail','recruit','stormsea','cash','raid'],3],
+  [['chart','sail','repair','sell','cash'],1]
 ];
 const HAP_SET=[['wreck',2],['tailwind',1],['dolphins',1],['mermaid',1],['storm',2],['whirlpool',1],['monster',2],['calm',1],['ghost',1],['smuggler',1],['tavern',1],['island',1],['crewUp',2],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
 const CHEST_SET=[[1,9],[2,9],[3,7],[5,4],[-2,1]];
