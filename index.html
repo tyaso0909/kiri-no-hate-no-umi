@@ -95,7 +95,6 @@ details.rules ul{padding-left:1.2em;margin:8px 0;font-size:14px}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:999px;padding:2px 12px;font-size:13px;color:var(--muted);white-space:nowrap}
 .chip b{color:var(--ink)}
 .spacer{flex:1}
-.rotate-hint{display:none;font-size:13px;border:1.5px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:10px;color:var(--muted)}
 
 /* lobby */
 .lobby{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:24px;align-items:start;max-width:1180px}
@@ -115,7 +114,7 @@ details.rules ul{padding-left:1.2em;margin:8px 0;font-size:14px}
   grid-template-areas:"opps log" "table log" "mine log";grid-template-rows:auto auto 1fr;align-items:start}
 .opps{grid-area:opps;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;min-width:0}
 .table{grid-area:table}
-.mine{grid-area:mine;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start;min-width:0}
+.mine{grid-area:mine;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start;min-width:0}
 .log{grid-area:log}
 @media (min-width:1200px){
   .game{grid-template-columns:minmax(0,1fr) 340px}
@@ -145,7 +144,6 @@ details.rules ul{padding-left:1.2em;margin:8px 0;font-size:14px}
 button.ch{cursor:pointer;width:44px;height:44px}
 button.ch:hover{transform:translateY(-2px)}
 .ch.empty{background:none;border:1.5px dashed var(--line);color:var(--muted)}
-.keepslot{font-size:12px;color:var(--muted)}
 .skipnote{font-size:12px;font-weight:700;color:var(--bad)}
 
 .table{border:2px solid var(--ink);border-radius:14px;padding:16px;background:var(--paper-2);display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start;min-width:0}
@@ -198,7 +196,6 @@ button.opt:hover:not(:disabled){background:#fbe6b0}
   .lobby,.home{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:600px) and (orientation:portrait){
-  .rotate-hint{display:block}
   .table{grid-template-columns:minmax(0,1fr)}
   .piles{grid-auto-flow:column;justify-content:start;align-items:center}
   .pile{width:72px;height:96px}
@@ -209,80 +206,85 @@ button.opt:hover:not(:disabled){background:#fbe6b0}
 }
 
 /* スマホ横向き：1画面に3列で収める */
-@media (orientation:landscape) and (max-height:560px){
-  body{font-size:13px;padding-block:4px 0;line-height:1.45}
-  .topbar{margin-bottom:4px;gap:4px 8px}
-  .topbar h1{font-size:16px}
-  .chip{font-size:11px;padding:0 8px}
-  .btn{padding:6px 12px}
-  .btn.small{padding:2px 8px;font-size:12px}
-  .btn.big{font-size:15px;padding:8px 18px}
-  .screen-game{display:flex;flex-direction:column;height:calc(100dvh - 6px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
-  .game{flex:1;min-height:0;gap:8px;
+/* スマホ横画面（縦持ちでも回転して適用）：1画面に3列で収める */
+html.land body{font-size:13px;padding-block:4px 0;line-height:1.45}
+html.land .topbar{margin-bottom:4px;gap:4px 8px}
+html.land .topbar h1{font-size:16px}
+html.land .chip{font-size:11px;padding:0 8px}
+html.land .btn{padding:6px 12px}
+html.land .btn.small{padding:2px 8px;font-size:12px}
+html.land .btn.big{font-size:15px;padding:8px 18px}
+html.land .screen-game{display:flex;flex-direction:column;height:calc(var(--appH,100dvh) - 8px)}
+html.land .game{flex:1;min-height:0;gap:8px;
     grid-template-columns:minmax(150px,24%) minmax(0,1fr) minmax(170px,26%);
     grid-template-rows:auto minmax(0,1fr);
     grid-template-areas:"opps table mine" "opps table log";align-items:stretch}
-  .opps{grid-template-columns:minmax(0,1fr);gap:6px;overflow:auto;align-content:start;min-height:0}
-  .table{overflow:auto;min-height:0;padding:8px 10px;gap:6px;border-radius:10px;align-content:start;grid-template-columns:minmax(0,1fr)}
-  .piles{grid-auto-flow:column;justify-content:start;align-items:center;gap:8px}
-  .pilemeta br{display:none}
-  .pilemeta b{margin-right:8px}
-  .cards{flex-wrap:nowrap}
-  .stage .choices+.cards .card,.stage .cards .card.small{width:120px}
-  .mine{grid-template-columns:minmax(0,1fr);gap:6px}
-  .mine .cardwrap{display:none}
-  .log{position:static;max-height:none;min-height:0;border-radius:10px}
-  .log h3{font-size:13px;padding:4px 10px}
-  .log ol{font-size:11px;padding:2px 0}
-  .log li{padding:2px 8px}
-  .pl{padding:5px 8px;gap:2px;border-radius:9px}
-  .pl.turn{box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 35%,transparent)}
-  .gold .g{font-size:17px}
-  .gold .t{font-size:11px}
-  .bar{height:4px}
-  .chests{min-height:22px;gap:3px}
-  .ch{width:22px;height:22px;font-size:11px;border-radius:4px}
-  .ch.king{width:32px;font-size:10px}
-  button.ch{width:38px;height:38px}
-  .meta{font-size:11px;gap:2px 8px}
-  .piles{gap:4px}
-  .pile{width:34px;height:44px;font-size:9px;box-shadow:2px 2px 0 var(--back-2);border-radius:5px}
-  .pile .num{font-size:13px}
-  .pilemeta{font-size:10px}
-  .stage{gap:6px}
-  .prompt{font-size:15px}
-  .prompt small{font-size:11px}
-  .cards{gap:8px}
-  .cardwrap .cap{font-size:10px}
-  .card{width:min(150px,46%);min-width:128px;padding:5px 7px 7px;gap:3px;border-radius:9px}
-  .card .title{font-size:15px}
-  .card .desc{font-size:11px}
-  .card.small{width:130px}
-  .card.back{min-height:96px}
-  .opt{padding:3px 7px}
-  .opt b{font-size:14px}
-  .opt span{font-size:10px;line-height:1.35}
-  .winner{padding:10px}
-  .winner h2{font-size:20px}
-  .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;padding-top:4px}
-  .compass{display:none}
-  .hero h1{font-size:38px}
-  .hero .sub{font-size:14px;margin:6px 0 10px}
-  .panel{padding:12px 14px}
-  .panel h2{font-size:18px;margin-bottom:6px}
-  .field{margin-bottom:8px;gap:3px}
-  .field input,.field select{padding:6px 10px}
-  .or{margin:8px 0}
-  .lobby{grid-template-columns:minmax(0,1fr) minmax(0,280px);gap:12px}
-  .seat{min-height:0;padding:8px 10px;gap:4px}
-}
+html.land .opps{grid-template-columns:minmax(0,1fr);gap:6px;overflow:auto;align-content:start;min-height:0}
+html.land .table{overflow:auto;min-height:0;padding:8px 10px;gap:6px;border-radius:10px;align-content:start;grid-template-columns:minmax(0,1fr)}
+html.land .piles{grid-auto-flow:column;justify-content:start;align-items:center;gap:8px}
+html.land .pilemeta br{display:none}
+html.land .pilemeta b{margin-right:8px}
+html.land .cards{flex-wrap:nowrap}
+html.land .stage .choices+.cards .card,html.land .stage .cards .card.small{width:120px}
+html.land .mine{grid-template-columns:minmax(0,1fr);gap:6px}
+html.land .mine .cardwrap{display:none}
+html.land .log{position:static;max-height:none;min-height:0;border-radius:10px}
+html.land .log h3{font-size:13px;padding:4px 10px}
+html.land .log ol{font-size:11px;padding:2px 0}
+html.land .log li{padding:2px 8px}
+html.land .pl{padding:5px 8px;gap:2px;border-radius:9px}
+html.land .pl.turn{box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 35%,transparent)}
+html.land .gold .g{font-size:17px}
+html.land .gold .t{font-size:11px}
+html.land .bar{height:4px}
+html.land .chests{min-height:22px;gap:3px}
+html.land .ch{width:22px;height:22px;font-size:11px;border-radius:4px}
+html.land .ch.king{width:32px;font-size:10px}
+html.land button.ch{width:38px;height:38px}
+html.land .meta{font-size:11px;gap:2px 8px}
+html.land .piles{gap:4px}
+html.land .pile{width:34px;height:44px;font-size:9px;box-shadow:2px 2px 0 var(--back-2);border-radius:5px}
+html.land .pile .num{font-size:13px}
+html.land .pilemeta{font-size:10px}
+html.land .stage{gap:6px}
+html.land .prompt{font-size:15px}
+html.land .prompt small{font-size:11px}
+html.land .cards{gap:8px}
+html.land .cardwrap .cap{font-size:10px}
+html.land .card{width:min(150px,46%);min-width:128px;padding:5px 7px 7px;gap:3px;border-radius:9px}
+html.land .card .title{font-size:15px}
+html.land .card .desc{font-size:11px}
+html.land .card.small{width:130px}
+html.land .card.back{min-height:96px}
+html.land .opt{padding:3px 7px}
+html.land .opt b{font-size:14px}
+html.land .opt span{font-size:10px;line-height:1.35}
+html.land .winner{padding:10px}
+html.land .winner h2{font-size:20px}
+html.land .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;padding-top:4px}
+html.land .compass{display:none}
+html.land .hero h1{font-size:38px}
+html.land .hero .sub{font-size:14px;margin:6px 0 10px}
+html.land .panel{padding:12px 14px}
+html.land .panel h2{font-size:18px;margin-bottom:6px}
+html.land .field{margin-bottom:8px;gap:3px}
+html.land .field input,html.land .field select{padding:6px 10px}
+html.land .or{margin:8px 0}
+html.land .lobby{grid-template-columns:minmax(0,1fr) minmax(0,280px);gap:12px}
+html.land .seat{min-height:0;padding:8px 10px;gap:4px}
+html.land .seats{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* 縦持ちのスマホでは画面ごと90度回して横画面にする */
+html.force,html.force body{height:100%;overflow:hidden}
+html.force body{padding:0}
+html.force #rot{position:fixed;top:0;left:0;width:var(--rw);height:var(--rh);transform-origin:0 0;transform:translateX(var(--rh)) rotate(90deg);overflow:auto;
+  padding:6px 12px 0;background:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:56px 56px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 </head>
 <body>
-<div class="wrap" id="app"></div>
-<div class="toast" id="toast" hidden></div>
+<div id="rot"><div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div></div>
 
 <script id="engine">
 /* ===== ルールエンジン（ルールブック試作版に準拠） ===== */
@@ -327,7 +329,7 @@ function newGame(players,target){
   for(const [k,n] of HAP_SET)for(let i=0;i<n;i++)deck.push({id:'c'+(id++),t:'h',k});
   const bag=[];let b=0;
   for(const [v,n] of CHEST_SET)for(let i=0;i<n;i++)bag.push({id:'t'+(b++),v});
-  const s={target,seats:players,P:players.map(()=>({gold:0,chests:[],charms:0,keep:null,skip:false})),
+  const s={target,seats:players,P:players.map(()=>({gold:0,chests:[],charms:0,skip:false})),
     deck:shuffle(deck),discard:[],bag:shuffle(bag),turn:Math.floor(Math.random()*players.length),
     phase:'start',cur:null,sub:{},extra:false,log:[],logN:0,winner:null,turnNo:1};
   log(s,`出航！ 金貨${target}枚を先に集めた船長の勝ち。最初は${nm(s,s.turn)}の番。`,'sys');
@@ -424,12 +426,7 @@ function act(s,a){
   switch(a.type){
     case 'draw':{if(s.phase!=='start')return false;const c=drawCard(s);if(!c){log(s,'山札も捨て札も空っぽだ。','sys');endTurn(s);return true}
       s.cur=c;if(c.t==='h')resolveHap(s,c);else{log(s,`${nm(s,me)}はアクションカードを引いた。`,'sys');s.phase='choose';s.sub={sail:false}}return true}
-    case 'keepOnly':if(s.phase!=='choose'||s.sub.sail||p.keep)return false;p.keep=s.cur;s.cur=null;log(s,`${nm(s,me)}はカードをキープして番を終えた。`);endTurn(s);return true;
-    case 'use':{if(s.phase!=='choose')return false;let card;
-      if(a.from==='keep'){if(!p.keep||s.sub.sail||!p.keep.o.includes(a.opt))return false;card=p.keep;p.keep=s.cur}
-      else{if(!s.cur||!s.cur.o.includes(a.opt))return false;card=s.cur}
-      s.discard.push(card);s.cur=card;if(a.from==='keep')log(s,`${nm(s,me)}はキープしていたカードを使った。`,'sys');
-      return doOpt(s,a.opt)}
+    case 'use':{if(s.phase!=='choose'||!s.cur||!s.cur.o.includes(a.opt))return false;s.discard.push(s.cur);return doOpt(s,a.opt)}
     case 'raidTarget':if(s.phase!=='raidTarget'||a.t===me||!s.P[a.t]||!s.P[a.t].chests.length)return false;s.sub={t:a.t};s.phase='raidPick';return true;
     case 'raidPick':{if(s.phase!=='raidPick')return false;const tp=s.P[s.sub.t];const c=tp.chests[a.i];if(!c)return false;tp.chests.splice(a.i,1);
       log(s,c.king?`${nm(s,me)}が${nm(s,s.sub.t)}から王の宝箱を奪った！`:`${nm(s,me)}が${nm(s,s.sub.t)}から宝箱を1個奪った。`,'trick');giveChest(s,me,c);endTurn(s);return true}
@@ -456,7 +453,7 @@ function cpuChoose(s){
   switch(s.phase){
     case 'choose':{
       const val=p.chests.reduce((a,c)=>a+c.v,0);const full=p.chests.length>=CAP;
-      const sc=(o,rest)=>{let v=0;
+      const sc=o=>{let v=0;
         switch(o){
           case 'cash':v=!p.chests.length?-1:(p.gold+val>=s.target?100:(val>=7||p.chests.length>=4||p.chests.some(c=>c.king))?val*1.3:val*0.45);break;
           case 'sail':v=full?0.2:2.6;break;
@@ -466,14 +463,9 @@ function cpuChoose(s){
           case 'chart':v=1.2;break;
           case 'wind':v=2.3;break;
         }
-        if(rest&&rest.o&&rest.o.includes('cash')&&o!=='cash')v+=0.9;
         return v+Math.random()*0.4;};
       const c=[];
-      s.cur.o.forEach(o=>c.push({a:{type:'use',from:'drawn',opt:o},v:sc(o,p.keep)}));
-      if(!s.sub.sail){
-        if(p.keep)p.keep.o.forEach(o=>c.push({a:{type:'use',from:'keep',opt:o},v:sc(o,s.cur)}));
-        else c.push({a:{type:'keepOnly'},v:s.cur.o.includes('cash')&&p.chests.length<3?1.4:0.2});
-      }
+      s.cur.o.forEach(o=>c.push({a:{type:'use',opt:o},v:sc(o)}));
       c.sort((x,y)=>y.v-x.v);return c[0].a;
     }
     case 'raidTarget':{const t=opps.filter(i=>s.P[i].chests.length);const k=t.find(i=>s.P[i].chests.some(c=>c.king));return {type:'raidTarget',t:k!==undefined?k:pickBy(t,i=>s.P[i].chests.length*2+s.P[i].gold*0.3)}}
@@ -838,7 +830,7 @@ function renderHome(){
       <details class="rules"><summary>ルール早見</summary>
         <ul>
           <li>自分の番に共通の山札から1枚引く。</li>
-          <li>アクションカードは2つの行動から1つを選ぶ。キープ（1枚まで）していたカードと入れ替えて使ってもよい。キープが空なら、引いたカードをキープして番を終えてもよい。</li>
+          <li>アクションカードは、書かれた2つの行動から1つを選んで行う。</li>
           <li>ハプニングはすぐに解決。悪いことは風の護符1枚で防げる（自動で使われる）。</li>
           <li>宝箱の中身は自分にしか見えない。港で換金して初めて金貨になる。船に積めるのは5個まで。</li>
           <li>金貨を目標枚数集めた船長がその場で勝利。</li>
@@ -909,13 +901,12 @@ function playerPanel(g,i,me){
   const p=g.P[i],seat=g.seats[i],c=SEATC[i%4],isMe=i===me,turn=g.turn===i&&g.phase!=='over';
   const pct=Math.min(100,p.gold/g.target*100);
   const chests=p.chests.length?p.chests.map(x=>chestTile(x,{mine:isMe})).join(''):`<span class="ch empty">0</span>`;
-  const keep=p.keep?'キープ1枚':'キープなし';
   return `<div class="pl ${turn?'turn':''}" style="--c:${c}">
     <div class="head"><span class="flag" style="--c:${c}"></span><span class="n">${esc(seat.name)}</span>${seat.kind==='cpu'?'<span class="tag">CPU</span>':''}${isMe?'<span class="tag you">あなた</span>':''}${turn?'<span class="turnmark">手番</span>':''}</div>
     <div class="gold"><span class="g">${p.gold}</span><span class="t">/ ${g.target} 金貨</span></div>
     <div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
     <div class="chests" aria-label="宝箱${p.chests.length}個">${chests}</div>
-    <div class="meta"><span>宝箱 <b class="num">${p.chests.length}</b>/5</span><span>護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span><span class="keepslot">${keep}</span></div>
+    <div class="meta"><span>宝箱 <b class="num">${p.chests.length}</b>/5</span><span>護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span></div>
     ${p.skip?'<div class="skipnote">次の番は休み</div>':''}
     ${isHost()&&seat.kind==='human'&&seat.uid!==myUid&&g.phase!=='over'?`<div><button class="btn small" data-a="toCpu" data-i="${i}" ${busy?'disabled':''}>CPUに交代</button></div>`:''}
   </div>`;
@@ -949,13 +940,9 @@ function stageHTML(g,me){
     case 'start':return `<div class="prompt">あなたの番です<small>共通の山札から1枚引きます。</small></div>
       <div class="choices"><button class="btn primary big" data-a="draw" ${dis}>カードを引く</button></div>
       <div class="cards">${g.cur?`<div class="cardwrap"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`:''}</div>`;
-    case 'choose':{
-      const sail=g.sub.sail;
-      return `<div class="prompt">${sail?'帆を張って引いたカード。どちらかを使います':'使う行動を選んでください'}<small>${sail?'このカードはキープできません。':p.keep?'キープ中のカードを使うと、引いたカードがキープに入ります。':'キープが空なので、使わずにキープして番を終えることもできます。'}</small></div>
-      <div class="cards"><div class="cardwrap"><span class="cap">引いたカード</span>${cardHTML(g.cur,{btnFrom:'drawn'})}</div>
-      ${!sail&&p.keep?`<div class="cardwrap"><span class="cap">キープ中のカード</span>${cardHTML(p.keep,{btnFrom:'keep'})}</div>`:''}</div>
-      ${!sail&&!p.keep?`<div class="choices"><button class="btn" data-a="keepOnly" ${dis}>使わずにキープして番を終える</button></div>`:''}`;
-    }
+    case 'choose':
+      return `<div class="prompt">${g.sub.sail?'帆を張って引いたカード。どちらかを使います':'使う行動を1つ選んでください'}</div>
+      <div class="cards"><div class="cardwrap"><span class="cap">引いたカード</span>${cardHTML(g.cur,{btnFrom:'drawn'})}</div></div>`;
     case 'raidTarget':case 'ghostTarget':{
       const t=idx(g).filter(i=>i!==actor&&g.P[i].chests.length);
       return `<div class="prompt">${g.phase==='raidTarget'?'どの船を襲いますか？':'幽霊船をどの船に向かわせますか？'}<small>${g.phase==='raidTarget'?'相手を選んだあと、見えない宝箱から1個を選びます。':'選んだ相手は宝箱を1個（いちばん安いもの）海に捨てます。'}</small></div>
@@ -981,10 +968,8 @@ function renderGame(g){
   const order=me>=0?[...Array(g.P.length)].map((_,k)=>(me+1+k)%g.P.length).filter(i=>i!==me):idx(g);
   const fresh=g.log.length?g.log[g.log.length-1].n:0;
   const logs=g.log.map(e=>`<li class="${e.c} ${e.n>lastLogN&&lastLogN?'fresh':''}">${esc(e.t)}</li>`).join('');
-  const keepMine=me>=0&&g.P[me].keep&&!(g.turn===me&&g.phase==='choose')?`<div class="cardwrap"><span class="cap">あなたのキープ</span>${cardHTML(g.P[me].keep,{small:true})}</div>`:'';
   const ol0=document.querySelector('.log ol');const prevScroll=ol0?ol0.scrollTop:null;
   $app.innerHTML=`<div class="screen-game">${topbar()}
-  <div class="rotate-hint">スマホは横向きにすると、盤面全体が1画面に収まります。</div>
   <div class="game">
     <div class="opps">${order.map(i=>playerPanel(g,i,me)).join('')}</div>
     <div class="table">
@@ -994,7 +979,7 @@ function renderGame(g){
       </div>
       <div class="stage">${stageHTML(g,me)}</div>
     </div>
-    ${me>=0?`<div class="mine">${playerPanel(g,me,me)}${keepMine}</div>`:''}
+    ${me>=0?`<div class="mine">${playerPanel(g,me,me)}</div>`:''}
     <aside class="log"><h3>航海日誌</h3><ol>${logs}</ol></aside>
   </div></div>`;
   if(prevScroll!==null){const ol=document.querySelector('.log ol');if(ol)ol.scrollTop=prevScroll}
@@ -1021,8 +1006,7 @@ document.addEventListener('click',e=>{
     case 'backLobby':doOp('backLobby');break;
     case 'toCpu':doOp('toCpu',{i:+d.i});break;
     case 'draw':perform({type:'draw'});break;
-    case 'use':perform({type:'use',from:d.from,opt:d.opt});break;
-    case 'keepOnly':perform({type:'keepOnly'});break;
+    case 'use':perform({type:'use',opt:d.opt});break;
     case 'raidTarget':perform({type:'raidTarget',t:+d.t});break;
     case 'ghostTarget':perform({type:'ghostTarget',t:+d.t});break;
     case 'raidPick':perform({type:'raidPick',i:+d.i});break;
@@ -1038,6 +1022,22 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&mode==='home'&&(e.target.id==='in-pass'||e.target.id==='in-name')&&online==='ok'){e.preventDefault();enterRoom()}
 });
 document.addEventListener('fullscreenchange',()=>{if(mode!=='home')render()});
+
+/* ---- スマホは常に横画面（縦持ちなら画面ごと回転） ---- */
+function fitScreen(){
+  const w=innerWidth,h=innerHeight,short=Math.min(w,h),long=Math.max(w,h);
+  const coarse=matchMedia('(pointer:coarse)').matches;
+  const phone=short<=560&&(coarse||long<=1000);
+  const force=phone&&h>w;
+  const land=phone||(w>h&&h<=560);
+  const root=document.documentElement;
+  root.classList.toggle('land',land);root.classList.toggle('force',force);
+  root.style.setProperty('--rw',(force?h:w)+'px');root.style.setProperty('--rh',(force?w:h)+'px');
+  root.style.setProperty('--appH',(force?w:h)+'px');
+}
+fitScreen();
+addEventListener('resize',fitScreen);
+addEventListener('orientationchange',()=>setTimeout(fitScreen,200));
 
 /* ---- 起動：claude.ai なら共有データ、それ以外（GitHub Pages など）なら直接接続 ---- */
 (async()=>{
