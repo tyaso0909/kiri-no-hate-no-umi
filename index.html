@@ -301,6 +301,9 @@ html.land .seats{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* 縦持ちのスマホでは画面ごと90度回して横画面にする */
 html.force,html.force body{height:100%;overflow:hidden}
 html.force body{padding:0}
+/* 回転表示では入力欄を、キーボードと反対側（画面の左＝端末の上側）に置く */
+html.force .home>.panel{order:-1}
+html.force .home>.credit{order:1}
 html.force #rot{position:fixed;top:0;left:0;width:var(--rw);height:var(--rh);transform-origin:0 0;transform:translateX(var(--rh)) rotate(90deg);overflow:auto;
   padding:6px 12px 0;background:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:80px 80px}
 /* サイコロの演出 */
@@ -1607,11 +1610,17 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('fullscreenchange',()=>{if(mode!=='home')render()});
 
 /* ---- スマホは常に横画面（縦持ちなら画面ごと回転） ---- */
+/* 端末そのものの向き（キーボードで画面の高さが縮んでも変わらない） */
+function devicePortrait(){try{if(screen.orientation&&screen.orientation.type)return screen.orientation.type.startsWith('portrait')}catch(e){}return screen.height>=screen.width}
+/* 文字入力中か（キーボードが出ている間は配置を固定する） */
+function typing(){const a=document.activeElement;if(!a)return false;if(a.tagName==='TEXTAREA')return true;return a.tagName==='INPUT'&&!/^(checkbox|range|radio|button|submit)$/.test(a.type)}
 function fitScreen(){
+  const root0=document.documentElement;
+  if(typing()&&root0.classList.contains('land'))return;
   const w=innerWidth,h=innerHeight,short=Math.min(w,h),long=Math.max(w,h);
   const coarse=matchMedia('(pointer:coarse)').matches;
   const phone=short<=560&&(coarse||long<=1000);
-  const force=phone&&h>w;
+  const force=phone&&(coarse?devicePortrait():h>w);
   const land=phone||(w>h&&h<=560);
   const root=document.documentElement;
   root.classList.toggle('land',land);root.classList.toggle('force',force);
@@ -1621,6 +1630,10 @@ function fitScreen(){
 fitScreen();
 addEventListener('resize',fitScreen);
 addEventListener('orientationchange',()=>setTimeout(fitScreen,200));
+/* 入力が終わってキーボードが閉じたら、改めて向きを合わせる */
+document.addEventListener('focusout',()=>setTimeout(()=>{if(!typing())fitScreen()},350));
+/* 回転表示中に入力欄を選んだとき、ブラウザが勝手にずらした表示を戻す */
+document.addEventListener('focusin',()=>{if(document.documentElement.classList.contains('force')&&typing())setTimeout(()=>{window.scrollTo(0,0)},60)});
 
 /* ---- 起動：claude.ai なら共有データ、それ以外（GitHub Pages など）なら直接接続 ---- */
 (async()=>{
