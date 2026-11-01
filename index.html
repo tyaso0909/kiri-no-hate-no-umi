@@ -296,13 +296,41 @@ html.force,html.force body{height:100%;overflow:hidden}
 html.force body{padding:0}
 html.force #rot{position:fixed;top:0;left:0;width:var(--rw);height:var(--rh);transform-origin:0 0;transform:translateX(var(--rh)) rotate(90deg);overflow:auto;
   padding:6px 12px 0;background:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:80px 80px}
+/* サイコロの演出 */
+#dice{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(14,27,36,.38)}
+.dice-box{display:grid;justify-items:center;gap:10px;padding:20px 34px 18px;border-radius:16px;background:var(--panel);border:2px solid var(--ink);box-shadow:var(--shadow);min-width:260px}
+.dice-who{font-family:var(--f-display);font-size:20px}
+.dice-stage{width:150px;height:150px;perspective:700px;display:grid;place-items:center}
+.die-wrap{animation:toss 1.35s cubic-bezier(.3,.7,.4,1) both}
+@keyframes toss{0%{transform:translateY(-110px) scale(.6)}42%{transform:translateY(0) scale(1)}58%{transform:translateY(-26px)}72%{transform:translateY(0)}84%{transform:translateY(-7px)}100%{transform:translateY(0)}}
+.die{--s:88px;width:var(--s);height:var(--s);position:relative;transform-style:preserve-3d}
+.die.roll{transition:transform 1.3s cubic-bezier(.12,.62,.22,1)}
+.face{position:absolute;inset:0;background:#fbf8ef;border:2px solid #1d2f3a;border-radius:16px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:13%;box-shadow:inset 0 0 12px rgba(29,47,58,.2);backface-visibility:hidden}
+.face i{width:70%;height:70%;border-radius:50%;background:#1d2f3a;place-self:center}
+.face i.red{background:#c4432f;width:115%;height:115%}
+.f1{transform:translateZ(calc(var(--s)/2))}.f6{transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
+.f3{transform:rotateY(90deg) translateZ(calc(var(--s)/2))}.f4{transform:rotateY(-90deg) translateZ(calc(var(--s)/2))}
+.f2{transform:rotateX(90deg) translateZ(calc(var(--s)/2))}.f5{transform:rotateX(-90deg) translateZ(calc(var(--s)/2))}
+.dice-shadow{width:80px;height:12px;border-radius:50%;background:rgba(29,47,58,.25);margin-top:-6px;animation:shadow 1.35s ease-out both}
+@keyframes shadow{0%{transform:scale(.4);opacity:.3}42%{transform:scale(1);opacity:1}58%{transform:scale(.8)}100%{transform:scale(1)}}
+.dice-res{font-size:20px;font-weight:700;min-height:1.6em;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;text-align:center}
+.dice-res.show{opacity:1;transform:none}
+.dice-res.good{color:var(--good)}.dice-res.bad{color:var(--bad)}
+.dice-res small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+html.land .dice-stage{width:110px;height:110px}
+html.land .die{--s:64px}
+html.land .face{border-radius:12px}
+html.land .dice-box{padding:10px 24px 10px;gap:4px}
+html.land .dice-who{font-size:16px}
+html.land .dice-res{font-size:16px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 </head>
 <body>
 <div id="rot"><div class="wrap" id="app"></div>
-<div class="toast" id="toast" hidden></div></div>
+<div class="toast" id="toast" hidden></div>
+<div id="dice" hidden></div></div>
 
 <script id="engine">
 /* ===== ルールエンジン（ルールブック試作版に準拠） ===== */
@@ -828,9 +856,10 @@ function scheduleCpu(){
   clearTimeout(cpuTimer);
   const g=G();if(!g||g.phase==='over')return;
   if(g.seats[g.turn].kind!=='cpu')return;
-  if(mode==='local'){cpuTimer=setTimeout(()=>{if(L&&L.seats[L.turn].kind==='cpu'){cpuStep(L);render();scheduleCpu()}},g.phase==='start'?750:1050);return}
+  const wait=Math.max(0,diceUntil-Date.now());
+  if(mode==='local'){cpuTimer=setTimeout(()=>{if(L&&L.seats[L.turn].kind==='cpu'){cpuStep(L);render();scheduleCpu()}},(g.phase==='start'?750:1050)+wait);return}
   if(!net||(spectator&&!isHost()))return;
-  const delay=net.cpuDelay();if(delay==null)return;
+  let delay=net.cpuDelay();if(delay==null)return;delay+=wait;
   const seq=room.seq;
   cpuTimer=setTimeout(()=>{Promise.resolve(net.op('cpu',{seq})).catch(()=>{})},delay);
 }
@@ -870,7 +899,7 @@ const SFX=(()=>{
     bad(t){tone(98,t,0.7,{type:'sawtooth',vol:0.14,slide:0.5});noise(t,1.1,{vol:0.4,type:'lowpass',freq:600,sweep:110});tone(62,t+0.05,0.6,{vol:0.3,slide:0.7})},
     trick(t){[440,523,622,494].forEach((f,i)=>tone(f,t+i*0.13,0.5,{vol:0.13}));tone(220,t,0.9,{type:'triangle',vol:0.06})},
     raid(t){noise(t,0.22,{vol:0.4,type:'bandpass',freq:1400,q:2,sweep:5000});tone(1500,t+0.17,0.35,{type:'square',vol:0.05,slide:0.92});tone(2250,t+0.17,0.25,{vol:0.05})},
-    dice(t){for(let i=0;i<7;i++)noise(t+i*0.055+Math.random()*0.02,0.035,{vol:0.32,type:'bandpass',freq:2200+Math.random()*1800,q:4})},
+    dice(t){let d=0;for(let i=0;i<15;i++){noise(t+d,0.035,{vol:0.3*(1-i/22),type:'bandpass',freq:2000+Math.random()*2000,q:4});d+=0.045+i*0.007}tone(180,t+1.25,0.12,{type:'triangle',vol:0.25,slide:0.6})},
     bell(t){[0,0.32].forEach(d=>{tone(880,t+d,1.3,{vol:0.18});tone(880*2.76,t+d,0.5,{vol:0.04});tone(440,t+d,0.9,{vol:0.05})})},
     win(t){[392,523,659,784].forEach((f,i)=>tone(f,t+i*0.14,0.32,{type:'triangle',vol:0.2}));[523,659,784,1047].forEach(f=>tone(f,t+0.6,1.4,{type:'triangle',vol:0.12}))}
   };
@@ -891,7 +920,7 @@ const SFX=(()=>{
       else if(t.includes('カードを引いた')||t.includes('帆を張って')){n='draw';p=3}
       if(n&&p>pri){best=n;pri=p}
     }
-    if(dice){play('dice');if(best)play(best,0.45)}
+    if(dice){play('dice');if(best)play(best,1.4)}
     else if(best)play(best);
   }
   /* 波の音（ゲーム中だけ、小さく） */
@@ -939,7 +968,7 @@ function onlineNote(){
 }
 function targetOptions(sel){return TARGETS.map((v,i)=>`<option value="${v}" ${v===sel?'selected':''}>金貨${v}枚で勝利（${['短め','標準','長め'][i]}）</option>`).join('')}
 function renderHome(){
-  SFX.ambient(false);
+  SFX.ambient(false);hideDice();
   const ok=online==='ok';
   const pv=(document.getElementById('in-pass')||{}).value||'';
   const nv=document.getElementById('in-name');if(nv)myName=nv.value;
@@ -1184,12 +1213,38 @@ function stageHTML(g,me){
   }
   return '';
 }
-let lastBell='';
+let lastBell='',diceUntil=0,diceTimers=[];
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const DIE_ROT={1:[0,0],6:[0,180],3:[0,-90],4:[0,90],2:[-90,0],5:[90,0]};
+function hideDice(){diceTimers.forEach(clearTimeout);diceTimers=[];const el=document.getElementById('dice');if(el){el.hidden=true;el.innerHTML=''}diceUntil=0}
+/* サイコロの結果（航海日誌の行）から演出を出す。全員の画面で同じ目が出る */
+function showDice(e){
+  const m=/サイコロは(\d)。(.+?)は金貨([+−-]\d)（計(\d+)）/.exec(e.t);if(!m)return;
+  const v=+m[1],who=m[2],good=e.c==='good';
+  const el=document.getElementById('dice');if(!el)return;
+  hideDice();
+  const faces=[1,2,3,4,5,6].map(f=>`<div class="face f${f}">${[...Array(9)].map((_,k)=>PIPS[f].includes(k)?`<i class="${f===1?'red':''}"></i>`:'<span></span>').join('')}</div>`).join('');
+  el.innerHTML=`<div class="dice-box" role="status" aria-live="polite"><div class="dice-who">${esc(who)}の賭け</div>
+    <div class="dice-stage"><div class="die-wrap"><div class="die" id="die">${faces}</div></div></div><div class="dice-shadow" aria-hidden="true"></div>
+    <div class="dice-res ${good?'good':'bad'}" id="dice-res">${v}の目　${v%2?'奇数':'偶数'}！<small>金貨${m[3]}（計${m[4]}枚）</small></div></div>`;
+  el.hidden=false;
+  const die=document.getElementById('die'),[rx,ry]=DIE_ROT[v];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const res=document.getElementById('dice-res');
+  if(reduce){die.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(0deg)`;res.classList.add('show')}
+  else{
+    die.style.transform=`rotateX(${rx-720-360*Math.floor(Math.random()*2)}deg) rotateY(${ry-1080+90*Math.floor(Math.random()*4)}deg) rotateZ(${-360+Math.round(Math.random()*120)}deg)`;
+    void die.offsetWidth;die.classList.add('roll');die.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(0deg)`;
+    diceTimers.push(setTimeout(()=>res.classList.add('show'),1350));
+  }
+  diceUntil=Date.now()+3000;
+  diceTimers.push(setTimeout(hideDice,3000));
+}
 function renderGame(g){
   const me=mySeat(g);
   const order=me>=0?[...Array(g.P.length)].map((_,k)=>(me+1+k)%g.P.length).filter(i=>i!==me):idx(g);
   const fresh=g.log.length?g.log[g.log.length-1].n:0;
-  if(lastLogN&&fresh>lastLogN)SFX.fromLog(g.log.filter(e=>e.n>lastLogN));
+  if(lastLogN&&fresh>lastLogN){const ne=g.log.filter(e=>e.n>lastLogN);SFX.fromLog(ne);const de=ne.find(e=>e.t.startsWith('サイコロは'));if(de)showDice(de)}
   const bellKey=g.turnNo+':'+g.turn;
   if(me>=0&&g.turn===me&&g.phase==='start'&&bellKey!==lastBell&&lastLogN){lastBell=bellKey;setTimeout(()=>SFX.play('bell'),450)}
   if(g.phase==='start'||lastBell==='')lastBell=lastBell||bellKey;
@@ -1216,6 +1271,7 @@ function renderGame(g){
 
 /* ===== 入力 ===== */
 document.addEventListener('click',e=>{
+  if(e.target.closest('#dice')){hideDice();return}
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
   const d=b.dataset;
   SFX.unlock();SFX.play('click');
