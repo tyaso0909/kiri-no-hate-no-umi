@@ -427,30 +427,30 @@ const HAP={
 const HAP_LABEL={good:'良いこと',bad:'悪いこと',trick:'駆け引き'};
 /* アクションカードには行動が上から5つ並ぶ。使えるのは上から「船員の数＋1」個まで */
 const ACTION_SET=[
-  [['sail','cash','recruit','stormsea','raid'],3],
-  [['cash','sail','raid','deep','anchor'],3],
-  [['sail','raid','repair','cash','recruit'],3],
-  [['raid','sail','chart','recruit','cash'],2],
-  [['recruit','repair','sail','cash','chart'],2],
-  [['repair','recruit','deep','raid','cash'],2],
-  [['deep','chart','recruit','cash','anchor'],3],
+  [['sail','cash','recruit','stormsea','raid'],4],
+  [['cash','sail','raid','deep','anchor'],4],
+  [['sail','raid','repair','cash','recruit'],4],
+  [['raid','sail','chart','recruit','cash'],3],
+  [['recruit','repair','sail','cash','chart'],3],
+  [['repair','recruit','deep','raid','cash'],3],
+  [['deep','chart','recruit','cash','anchor'],4],
   [['chart','deep','sell','cash','raid'],2],
-  [['cash','raid','deep','recruit','sail'],3],
-  [['raid','cash','dispatch','sail','repair'],2],
+  [['cash','raid','deep','recruit','sail'],4],
+  [['raid','cash','dispatch','sail','repair'],3],
   [['anchor','repair','raid','dispatch','cash'],2],
-  [['sail','anchor','cash','stormsea','recruit'],2],
+  [['sail','anchor','cash','stormsea','recruit'],3],
   [['stormsea','sell','dispatch','sail','cash'],2],
-  [['stormsea','sail','cash','raid','repair'],2],
-  [['recruit','deep','chart','stormsea','cash'],3],
-  [['deep','recruit','anchor','sail','sell'],2],
+  [['stormsea','sail','cash','raid','repair'],3],
+  [['recruit','deep','chart','stormsea','cash'],4],
+  [['deep','recruit','anchor','sail','sell'],3],
   [['sell','dispatch','stormsea','recruit','cash'],1],
   [['dispatch','stormsea','recruit','cash','raid'],1],
-  [['recruit','sail','raid','cash','deep'],3],
-  [['cash','stormsea','anchor','recruit','chart'],3],
-  [['sail','recruit','stormsea','cash','raid'],3],
+  [['recruit','sail','raid','cash','deep'],4],
+  [['cash','stormsea','anchor','recruit','chart'],4],
+  [['sail','recruit','stormsea','cash','raid'],4],
   [['chart','sail','repair','sell','cash'],1]
 ];
-const HAP_SET=[['wreck',2],['tailwind',1],['dolphins',1],['mermaid',1],['storm',2],['whirlpool',1],['monster',2],['calm',1],['ghost',1],['smuggler',1],['tavern',1],['island',1],['crewUp',2],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
+const HAP_SET=[['wreck',3],['tailwind',2],['dolphins',2],['mermaid',2],['storm',2],['whirlpool',2],['monster',2],['calm',2],['ghost',2],['smuggler',1],['tavern',2],['island',1],['crewUp',3],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
 const CHEST_SET=[[1,9],[2,9],[3,7],[5,4],[-2,1]];
 const CAP=5, MAXCH=2, MAXCREW=4;
 const CPU_NAMES=['カモメ号','黒潮丸','サンゴ号','北風丸'];
@@ -1166,7 +1166,7 @@ function renderHome(){
       ${compass}
       <h1>霧の果ての海</h1>
       <p class="sub">百年に一度、霧が晴れる。四人の船長が同じ海へ漕ぎ出し、宝箱を積んでは港へ戻る。積むほど稼げて、積むほど狙われる。</p>
-      <div class="facts"><span>プレイ人数 <b>1–4</b></span><span>勝利条件 金貨 <b>20/30/40</b> 枚</span><span>山札 <b>75</b> 枚</span><span>宝箱 <b>30</b> 個</span></div>
+      <div class="facts"><span>プレイ人数 <b>1–4</b></span><span>勝利条件 金貨 <b>20/30/40</b> 枚</span><span>山札 <b>100</b> 枚</span><span>宝箱 <b>30</b> 個</span></div>
       <details class="rules"><summary>ルール早見</summary>
         <ul>
           <li>自分の番に共通の山札から1枚引く。</li>
