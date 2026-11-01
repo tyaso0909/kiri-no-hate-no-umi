@@ -411,7 +411,7 @@ const OPT={
   chart:{n:'海図を読む',d:'山札の上2枚を見て、並べ替える'},
   repair:{n:'修理',d:'風の護符を1枚得る（最大2）'},
   anchor:{n:'錨を下ろす',d:'次の自分の番まで、宝箱を奪われない・失わない'},
-  stormsea:{n:'嵐の海域へ',d:'宝箱を1個ずつ引き上げる。続けるとサイコロ、1で全部失う（最大3個）'},
+  stormsea:{n:'嵐の海域へ',d:'サイコロを振るたびに宝箱を1個引き上げる。1が出たら全部失う（最大3個）'},
   sell:{n:'闇の買い取り',d:'伏せて混ぜた自分の宝箱から1つ選び、金貨2枚で売る'},
   dispatch:{n:'船員の出稼ぎ',d:'船員1人が出稼ぎへ。自分の番3回後に金貨2枚を持って戻る'},
   recruit:{n:'船員募集',d:'船員を1人増やす（金貨3で確実、無料なら50%）'}
@@ -588,8 +588,8 @@ function doOpt(s,opt){
     case 'chart':ensureDeck(s,2);if(s.deck.length<2){log(s,'山札が少なすぎて海図が読めない。','sys');endTurn(s);return true}s.phase='chart';s.sub={};return true;
     case 'recruit':if(crewTotal(p)>=MAXCREW){log(s,`${nm(s,me)}：船員はもう満員だ（${MAXCREW}人）。`,'sys');endTurn(s);return true}s.phase='recruit';s.sub={};log(s,`${nm(s,me)}：船員を募集する。`);return true;
     case 'repair':p.charms=Math.min(MAXCH,p.charms+1);log(s,`${nm(s,me)}：修理して風の護符を得た（${p.charms}枚）。`);endTurn(s);return true;
-    case 'stormsea':{const c=fromBag(s);if(!c){log(s,'宝箱がもう残っていない。','sys');endTurn(s);return true}
-      s.sub={got:[c]};s.phase='stormsea';log(s,`${nm(s,me)}：嵐の海域へ漕ぎ出し、宝箱を1個引き上げた。`);return true}
+    case 'stormsea':{if(!s.bag.length){log(s,'宝箱がもう残っていない。','sys');endTurn(s);return true}
+      s.sub={got:[]};s.phase='stormsea';log(s,`${nm(s,me)}：嵐の海域へ漕ぎ出した。`);return true}
     case 'sell':{const ids=p.chests.map((c,i)=>i).filter(i=>!p.chests[i].king);
       if(!ids.length){log(s,`${nm(s,me)}：闇の買い取りに出せる宝箱がなかった。`,'sys');endTurn(s);return true}
       s.sub={order:shuffle(ids.map(i=>p.chests[i].id))};s.phase='sell';log(s,`${nm(s,me)}：宝箱を伏せて混ぜ、闇の買い取りに出す。`);return true}
@@ -628,12 +628,13 @@ function act(s,a){
       else log(s,`${nm(s,me)}の呼びかけに、誰も応えなかった。`,'sys');
       endTurn(s);return true}
     case 'storm':{if(s.phase!=='stormsea')return false;const got=s.sub.got;
-      if(!a.cont||got.length>=3){got.forEach(c=>giveChest(s,me,c));log(s,`${nm(s,me)}は嵐の海域から宝箱を${got.length}個持ち帰った。`,'good');endTurn(s);return true}
+      if(!a.cont){if(!got.length)return false;got.forEach(c=>giveChest(s,me,c));log(s,`${nm(s,me)}は嵐の海域から宝箱を${got.length}個持ち帰った。`,'good');endTurn(s);return true}
+      if(got.length>=3)return false;
       const d=1+Math.floor(Math.random()*6);
-      if(d===1){got.forEach(c=>toBag(s,c));logDice(s,me,d,'嵐の海域','嵐に呑まれた！',`嵐に呑まれ、引き上げた宝箱${got.length}個を失った。`,'bad');endTurn(s);return true}
+      if(d===1){got.forEach(c=>toBag(s,c));logDice(s,me,d,'嵐の海域','嵐に呑まれた！',got.length?`嵐に呑まれ、引き上げた宝箱${got.length}個を失った。`:'嵐に押し戻され、何も引き上げられなかった。','bad');endTurn(s);return true}
       const c=fromBag(s);
       if(!c){got.forEach(x=>giveChest(s,me,x));log(s,`宝箱が尽きたので、${got.length}個を持ち帰った。`,'sys');endTurn(s);return true}
-      got.push(c);logDice(s,me,d,'嵐の海域','嵐を乗り切った！',`宝箱をもう1個引き上げた（${got.length}個目）。`,'good');
+      got.push(c);logDice(s,me,d,'嵐の海域','嵐を乗り切った！',`宝箱を1個引き上げた（${got.length}個目）。`,'good');
       if(got.length>=3){got.forEach(x=>giveChest(s,me,x));log(s,`${nm(s,me)}は嵐の海域から宝箱を3個持ち帰った。`,'good');endTurn(s)}
       return true}
     case 'sell':{if(s.phase!=='sell')return false;const id=s.sub.order[a.i];if(id==null)return false;const k=p.chests.findIndex(c=>c.id===id);if(k<0)return false;
@@ -690,7 +691,7 @@ function cpuChoose(s){
     case 'raidTarget':{const t=opps.filter(i=>s.P[i].chests.length&&!safe(s,i));const k=t.find(i=>s.P[i].chests.some(c=>c.king));return {type:'raidTarget',t:k!==undefined?k:pickBy(t,i=>s.P[i].chests.length*2+s.P[i].gold*0.3)}}
     case 'raidPick':{const ch=s.P[s.sub.t].chests;const k=ch.findIndex(c=>c.king);return {type:'raidPick',i:k>=0?k:Math.floor(Math.random()*ch.length)}}
     case 'ghostTarget':{const t=opps.filter(i=>s.P[i].chests.length&&!safe(s,i));return {type:'ghostTarget',t:pickBy(t,threat)}}
-    case 'stormsea':{const n=s.sub.got.length;return {type:'storm',cont:n<3&&(n<2||Math.random()<0.45)}}
+    case 'stormsea':{const n=s.sub.got.length;return {type:'storm',cont:n===0||(n<3&&(n<2||Math.random()<0.45))}}
     case 'sell':return {type:'sell',i:Math.floor(Math.random()*s.sub.order.length)};
     case 'toll':{const low=p.chests.filter(c=>!c.king).sort((a,b)=>a.v-b.v)[0];
       if(low&&low.v<=1)return {type:'toll',how:'give'};if(p.gold>=2&&p.gold+2<s.target)return {type:'toll',how:'pay'};if(low)return {type:'toll',how:'give'};return {type:'toll',how:'fight'}}
@@ -1182,7 +1183,7 @@ function renderHome(){
           <li>アクションカードには行動が5つ並ぶ。使えるのは上から「船員の数＋1」個まで。船員は最初1人（最大4人）。</li>
           <li>船員募集：金貨3枚を払えば必ず1人増える。払わなければ50%で増える。</li>
           <li>錨を下ろす：次の自分の番まで、略奪・幽霊船・大嵐・海の怪物から宝箱を守る。</li>
-          <li>嵐の海域へ：宝箱を1個引き上げ、続けるたびにサイコロ。1が出たら引き上げた分を全部失う（最大3個）。</li>
+          <li>嵐の海域へ：サイコロを振るたびに宝箱を1個引き上げる（1個目から）。1が出たら引き上げた分を全部失う（最大3個）。</li>
           <li>闇の買い取り：自分の宝箱を伏せて混ぜ、1つ選んで金貨2枚で売る。</li>
           <li>船員の出稼ぎ：船員1人が出かけ、自分の番3回後に金貨2枚を持って戻る。</li>
           <li>ハプニングはすぐに解決。悪いことは風の護符1枚で防げる（自動で使われる）。</li>
@@ -1412,9 +1413,9 @@ function stageHTML(g,me){
       <div class="choices"><button class="btn primary" data-a="recruit" data-pay="1" ${busy||p.gold<3?'disabled':''}>金貨3枚を払って雇う</button><button class="btn" data-a="recruit" data-pay="0" ${dis}>払わずに声をかける（50%）</button></div>
       ${p.gold<3?'<p class="note" style="margin:0">金貨が3枚未満なので、払って雇うことはできません。</p>':''}`;
     case 'stormsea':{const got=g.sub.got;
-      return `<div class="prompt">嵐の海域へ<small>続けるとサイコロを振る。1が出たら、ここで引き上げた宝箱をすべて失う（最大3個）。</small></div>
-      <div class="choices" aria-label="引き上げた宝箱">${got.map(c=>`<svg width="62" height="56" viewBox="0 0 62 56" aria-hidden="true">${chestOpen(c,1,1)}</svg>`).join('')}</div>
-      <div class="choices"><button class="btn primary" data-a="storm" data-cont="1" ${busy||got.length>=3?'disabled':''}>続ける（サイコロ・1で全部失う）</button><button class="btn" data-a="storm" data-cont="0" ${dis}>やめて${got.length}個持ち帰る</button></div>`;}
+      return `<div class="prompt">嵐の海域へ<small>サイコロを振るたびに宝箱を1個引き上げる。1が出たら、ここで引き上げた宝箱をすべて失う（最大3個）。${got.length?'':'まずは1回振ろう。'}</small></div>
+      ${got.length?`<div class="choices" aria-label="引き上げた宝箱">${got.map(c=>`<svg width="62" height="56" viewBox="0 0 62 56" aria-hidden="true">${chestOpen(c,1,1)}</svg>`).join('')}</div>`:''}
+      <div class="choices"><button class="btn primary" data-a="storm" data-cont="1" ${busy||got.length>=3?'disabled':''}>サイコロを振る（1で全部失う）</button>${got.length?`<button class="btn" data-a="storm" data-cont="0" ${dis}>やめて${got.length}個持ち帰る</button>`:''}</div>`;}
     case 'sell':{const n=g.sub.order.length;
       return `<div class="prompt">闇の買い取り<small>宝箱を伏せて混ぜました。1つ選ぶと、中身に関係なく金貨2枚で売れます。</small></div>
       <div class="chests">${busy?'':g.sub.order.map((_,i)=>chestMini({v:0},{btn:true,i,big:true}).replace('data-a="raidPick"','data-a="sellPick"').replace(/中身の見えない宝箱/g,'伏せた宝箱')).join('')}</div>`;}
