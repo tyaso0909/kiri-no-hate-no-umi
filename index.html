@@ -716,7 +716,7 @@ function DbNet(dbx,uid){
     },
     op(name,args){return mutate(d=>OPS[name](d,uid,args||{}))},
     async leave(){try{if(room&&!spectator)await mutate(d=>OPS.leave(d,uid))}catch(e){}if(unsub)unsub();unsub=null;clearTimeout(timer)},
-    cpuDelay(){return room&&room.host===uid?1500:10000+Math.random()*2000},
+    cpuDelay(){return room&&room.host===uid?1000:10000+Math.random()*2000},
     note:''
   };
 }
@@ -818,7 +818,7 @@ function PeerNet(uid){
       try{peer&&peer.destroy()}catch(e){}
       peer=null;hostConn=null;conns.clear();
     },
-    cpuDelay(){return isHostPeer?1500:null},
+    cpuDelay(){return isHostPeer?1000:null},
     get isHostPeer(){return isHostPeer},
     note:'インターネット経由でホストのブラウザに直接つなぎます。ホストがページを閉じるとルームは終わります。'
   };
@@ -893,7 +893,7 @@ function scheduleCpu(){
   const g=G();if(!g||g.phase==='over')return;
   if(g.seats[g.turn].kind!=='cpu')return;
   const wait=Math.max(0,diceUntil-Date.now(),ANN.until-Date.now());
-  if(mode==='local'){cpuTimer=setTimeout(()=>{if(L&&L.seats[L.turn].kind==='cpu'){cpuStep(L);render();scheduleCpu()}},(g.phase==='start'?1100:1500)+wait);return}
+  if(mode==='local'){cpuTimer=setTimeout(()=>{if(L&&L.seats[L.turn].kind==='cpu'){cpuStep(L);render();scheduleCpu()}},(g.phase==='start'?650:900)+wait);return}
   if(!net||(spectator&&!isHost()))return;
   let delay=net.cpuDelay();if(delay==null)return;delay+=wait;
   const seq=room.seq;
@@ -1281,7 +1281,7 @@ const ANN={q:[],cur:null,timer:null,until:0};
 function annClear(){clearTimeout(ANN.timer);ANN.q=[];ANN.cur=null;ANN.until=0;const el=document.getElementById('ann');if(el){el.hidden=true;el.innerHTML=''}}
 function annPush(it){
   ANN.q.push(it);if(ANN.q.length>5)ANN.q.splice(0,ANN.q.length-5);
-  ANN.until=Math.max(ANN.until,Date.now(),diceUntil)+it.ms+300;
+  ANN.until=Math.max(ANN.until,Date.now(),diceUntil)+it.ms+200;
   if(!ANN.cur)annNext();
 }
 function annNext(){
@@ -1292,7 +1292,7 @@ function annNext(){
   const wait=Math.max(0,diceUntil-Date.now());
   ANN.timer=setTimeout(()=>{
     el.className=it.cls;el.innerHTML=it.html;el.hidden=false;if(it.sound)SFX.play(it.sound);
-    ANN.timer=setTimeout(()=>{el.classList.add('out');ANN.timer=setTimeout(annNext,250)},it.ms);
+    ANN.timer=setTimeout(()=>{el.classList.add('out');ANN.timer=setTimeout(annNext,180)},it.ms);
   },wait);
 }
 const ANN_SKIP=/アクションカードを引いた|^出航|^サイコロは|カードをキープ/;
@@ -1306,12 +1306,12 @@ function announceBatch(g,ne){
   const strip=t=>actor>=0&&t.startsWith(nmA+'：')?t.slice(nmA.length+1):t;
   const shown=lines.slice(-4);
   const top=shown.reduce((a,e)=>ANN_RANK[e.c]>ANN_RANK[a]?e.c:a,'');
-  annPush({cls:'ann res '+top,ms:Math.min(3200,1500+shown.length*450),
+  annPush({cls:'ann res '+top,ms:Math.min(2300,1000+shown.length*330),
     html:`<div class="ann-box"><div class="ann-head">${actor>=0?pennant(SEATC[actor%4],22)+`<b>${esc(nmA)}</b>`:'<b>海の出来事</b>'}<small>ターン ${shown[0].tn??g.turnNo}</small></div><ul>${shown.map(e=>`<li class="${e.c}">${esc(strip(e.t))}</li>`).join('')}</ul></div>`});
 }
 function announceTurn(g,me){
   const t=g.turn,mine=t===me;
-  annPush({cls:'ann turn'+(mine?' me':''),ms:mine?1400:1050,sound:mine?'bell':null,
+  annPush({cls:'ann turn'+(mine?' me':''),ms:mine?1100:750,sound:mine?'bell':null,
     html:`<div class="ann-box">${pennant(SEATC[t%4],34)}<div><div class="ann-title">${mine?'あなたの番です':esc(nm(g,t))+'の番'}</div><small>ターン ${g.turnNo}${g.seats[t].kind==='cpu'?'　CPU':''}</small></div></div>`});
 }
 let prevGold=[],deltas=[];
