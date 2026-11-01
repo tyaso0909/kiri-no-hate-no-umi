@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="共通の山札から宝箱を集めて港で換金する、最大4人のオンライン対戦カードゲーム。合言葉でルームを作り、空いた席にはCPUが入る。">
+<meta name="theme-color" content="#132637">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>霧の果ての海</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Antique+Soft&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: 海図の紙の上に、相手の船・卓・自分の船・航海日誌。PCは2列、スマホ横は1画面3列、スマホ縦は1列 */
+:root{
+  --paper:#e4ecee; --paper-2:#d6e2e5; --grid:rgba(19,38,55,.06);
+  --ink:#132637; --muted:#56697a; --line:#b4c5cb;
+  --card:#f8faf9; --card-ink:#132637;
+  --brass:#c98d0a; --brass-ink:#1b1405;
+  --good:#1d7a68; --bad:#b33c29; --trick:#6b4a96; --cash:#a87406;
+  --seat0:#c4432f; --seat1:#2f6fb2; --seat2:#2e8657; --seat3:#c58a10;
+  --back:#1b3550; --back-2:#244465;
+  --shadow:0 1px 0 rgba(19,38,55,.12), 0 6px 18px -10px rgba(19,38,55,.35);
+  --f-display:"Zen Antique Soft","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0c1821; --paper-2:#12222e; --grid:rgba(180,210,225,.05);
+  --ink:#dce7eb; --muted:#8ea3b0; --line:#253b4a;
+  --card:#f3f5f2; --card-ink:#132637;
+  --brass:#f0b532; --brass-ink:#1b1405;
+  --good:#3fb39a; --bad:#e2664f; --trick:#a587d4; --cash:#e3a92a;
+  --back:#203d5c; --back-2:#2b5075;
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 22px -10px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0c1821; --paper-2:#12222e; --grid:rgba(180,210,225,.05);
+  --ink:#dce7eb; --muted:#8ea3b0; --line:#253b4a;
+  --card:#f3f5f2; --card-ink:#132637;
+  --brass:#f0b532; --brass-ink:#1b1405;
+  --good:#3fb39a; --bad:#e2664f; --trick:#a587d4; --cash:#e3a92a;
+  --back:#203d5c; --back-2:#2b5075;
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 22px -10px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.6;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:56px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:16px 32px;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.wrap{max-width:1440px;margin:0 auto}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;margin:0}
+
+.btn{border:2px solid var(--ink);background:transparent;border-radius:8px;padding:9px 16px;font-weight:700;line-height:1.3}
+.btn:hover:not(:disabled){background:var(--paper-2)}
+.btn.primary{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07);background:var(--brass)}
+.btn.small{padding:5px 10px;font-size:13px;border-width:1.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.big{font-size:18px;padding:14px 28px}
+
+/* home */
+.home{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:start;padding-top:24px;max-width:1180px;margin:0 auto}
+.hero h1{font-size:clamp(44px,8vw,84px);line-height:1.05;letter-spacing:.02em}
+.hero .sub{font-family:var(--f-display);font-size:19px;color:var(--muted);margin:14px 0 22px;max-width:30em}
+.compass{width:120px;height:120px;color:var(--ink);opacity:.85;margin-bottom:8px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:13px}
+.facts b{color:var(--ink);font-family:var(--f-num)}
+.panel{background:var(--paper);border:2px solid var(--ink);border-radius:12px;padding:22px;box-shadow:var(--shadow)}
+.panel h2{font-size:24px;margin-bottom:14px}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.field input,.field select{font:inherit;color:var(--ink);background:var(--paper-2);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.note{font-size:13px;color:var(--muted);margin-top:12px}
+.alert{border-left:4px solid var(--bad);padding:8px 12px;background:var(--paper-2);border-radius:4px;font-size:13px;margin-top:12px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:18px 0}
+.or::before,.or::after{content:"";flex:1;border-top:1px dashed var(--line)}
+details.rules{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+details.rules summary{cursor:pointer;font-weight:700}
+details.rules ul{padding-left:1.2em;margin:8px 0;font-size:14px}
+
+/* top bar */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:14px}
+.topbar h1{font-size:24px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:999px;padding:2px 12px;font-size:13px;color:var(--muted);white-space:nowrap}
+.chip b{color:var(--ink)}
+.spacer{flex:1}
+.rotate-hint{display:none;font-size:13px;border:1.5px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:10px;color:var(--muted)}
+
+/* lobby */
+.lobby{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:24px;align-items:start;max-width:1180px}
+.seats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.seat{border:2px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;min-height:104px;background:var(--paper)}
+.seat.filled{border-color:var(--ink)}
+.seat.closed{opacity:.5;border-style:dashed}
+.seat .who{display:flex;align-items:center;gap:8px;font-weight:700;min-width:0}
+.seat .who span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flag{width:14px;height:18px;flex:none;clip-path:polygon(0 0,100% 0,100% 100%,50% 72%,0 100%);background:var(--c)}
+.tag{font-size:11px;font-weight:700;letter-spacing:.06em;border:1px solid currentColor;border-radius:4px;padding:0 5px;color:var(--muted);flex:none}
+.tag.you{color:var(--brass)}
+.seat .state{font-size:13px;color:var(--muted)}
+
+/* game: PC */
+.game{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) 300px;
+  grid-template-areas:"opps log" "table log" "mine log";grid-template-rows:auto auto 1fr;align-items:start}
+.opps{grid-area:opps;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;min-width:0}
+.table{grid-area:table}
+.mine{grid-area:mine;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start;min-width:0}
+.log{grid-area:log}
+@media (min-width:1200px){
+  .game{grid-template-columns:minmax(0,1fr) 340px}
+  .card{width:210px}
+}
+
+.pl{border:2px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper);display:grid;gap:8px;position:relative;min-width:0}
+.pl.turn{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent)}
+.pl .head{display:flex;align-items:center;gap:8px;min-width:0}
+.pl .head .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .turnmark{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c);flex:none}
+.gold{display:flex;align-items:baseline;gap:6px}
+.gold .g{font-family:var(--f-num);font-size:26px;font-weight:600;line-height:1}
+.gold .t{font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--paper-2);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--brass)}
+.meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
+.charm{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid var(--good);margin-right:2px;vertical-align:-1px}
+.charm.on{background:var(--good)}
+.chests{display:flex;flex-wrap:wrap;gap:5px;min-height:34px}
+.ch{width:32px;height:32px;border-radius:6px;display:inline-grid;place-items:center;line-height:1;text-align:center;font-family:var(--f-num);font-weight:600;font-size:14px;border:1.5px solid #6b4a1c;background:linear-gradient(#a0712f 0 34%,#6b4a1c 34% 40%,#8a5f27 40%);color:#fff6df;position:relative;padding:0}
+.ch.mine,.ch.curse,.ch.king{padding-top:8px}
+.ch.mine{background:linear-gradient(#b98a3e 0 30%,#6b4a1c 30% 36%,#f3e5c3 36%);color:#3a2708}
+.ch.zero{color:#8a7a5a}
+.ch.curse{background:linear-gradient(#5a2a52 0 30%,#2e1029 30% 36%,#e7d3e2 36%);color:#5a1f4f;border-color:#2e1029}
+.ch.king{background:linear-gradient(#e2b23a 0 30%,#7b5508 30% 36%,#fff1c2 36%);color:#6a4500;border-color:#7b5508;width:44px;font-size:12px}
+button.ch{cursor:pointer;width:44px;height:44px}
+button.ch:hover{transform:translateY(-2px)}
+.ch.empty{background:none;border:1.5px dashed var(--line);color:var(--muted)}
+.keepslot{font-size:12px;color:var(--muted)}
+.skipnote{font-size:12px;font-weight:700;color:var(--bad)}
+
+.table{border:2px solid var(--ink);border-radius:14px;padding:16px;background:var(--paper-2);display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start;min-width:0}
+.piles{display:grid;gap:10px;justify-items:center}
+.pile{width:96px;height:128px;border-radius:9px;background:repeating-linear-gradient(45deg,var(--back) 0 8px,var(--back-2) 8px 16px);border:2px solid var(--back);display:grid;place-items:center;color:#e8eef0;font-family:var(--f-display);font-size:13px;text-align:center;box-shadow:3px 3px 0 var(--back-2)}
+.pile .num{font-size:22px;display:block}
+.pilemeta{font-size:12px;color:var(--muted);text-align:center;line-height:1.5}
+.stage{display:grid;gap:12px;min-width:0}
+.prompt{font-family:var(--f-display);font-size:20px;line-height:1.35}
+.prompt small{display:block;font-family:var(--f-body);font-size:13px;color:var(--muted);margin-top:2px}
+.cards{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.cardwrap{display:grid;gap:6px;justify-items:start}
+.cardwrap .cap{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.05em}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+
+.card{width:190px;border-radius:12px;background:var(--card);color:var(--card-ink);border:2px solid var(--card-ink);padding:10px 12px 12px;display:grid;gap:6px;box-shadow:var(--shadow)}
+.card .kind{font-size:10px;letter-spacing:.14em;font-weight:700;display:flex;justify-content:space-between;color:#56697a}
+.card .title{font-family:var(--f-display);font-size:20px;line-height:1.2}
+.card .desc{font-size:13px;line-height:1.5}
+.card.h{border-color:var(--hc);background:linear-gradient(var(--hc) 0 6px,var(--card) 6px)}
+.card.h .kind{color:var(--hc);padding-top:4px}
+.card.h.good{--hc:#1d7a68}.card.h.bad{--hc:#b33c29}.card.h.trick{--hc:#6b4a96}
+.opt{display:grid;gap:1px;padding:7px 9px;border-radius:8px;border:1.5px solid #c9d4d8;text-align:left;background:transparent;color:var(--card-ink);width:100%}
+.opt b{font-family:var(--f-display);font-weight:400;font-size:17px}
+.opt span{font-size:12px;color:#56697a}
+button.opt{border-color:#132637;cursor:pointer}
+button.opt:hover:not(:disabled){background:#fbe6b0}
+.ordiv{font-size:10px;text-align:center;color:#8a9aa4;letter-spacing:.2em}
+.card.back{background:repeating-linear-gradient(45deg,var(--back) 0 8px,var(--back-2) 8px 16px);border-color:var(--back);color:#e8eef0;min-height:150px;place-items:center;text-align:center;font-family:var(--f-display)}
+.card.small{width:150px}
+.card.small .title{font-size:17px}
+
+.log{border:2px solid var(--ink);border-radius:12px;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr);max-height:calc(100vh - 110px);position:sticky;top:max(12px,env(safe-area-inset-top,0px));min-height:0}
+.log h3{font-size:17px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.log ol{list-style:none;margin:0;padding:6px 0;overflow:auto;font-size:13px;display:flex;flex-direction:column-reverse;min-height:0}
+.log li{padding:5px 14px;border-left:3px solid transparent;line-height:1.5}
+.log li.good{border-left-color:var(--good)}.log li.bad{border-left-color:var(--bad)}.log li.trick{border-left-color:var(--trick)}
+.log li.cash{border-left-color:var(--cash);font-weight:700}.log li.win{border-left-color:var(--brass);font-weight:700;background:color-mix(in srgb,var(--brass) 18%,transparent)}
+.log li.sys{color:var(--muted)}
+.log li.fresh{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:color-mix(in srgb,var(--brass) 35%,transparent)}to{background:transparent}}
+.winner{border:3px solid var(--brass);border-radius:14px;padding:18px;background:var(--paper);text-align:center;display:grid;gap:10px;justify-items:center}
+.winner h2{font-size:30px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+
+/* タブレット・スマホ縦：1列 */
+@media (max-width:900px){
+  .game{grid-template-columns:minmax(0,1fr);grid-template-areas:"opps" "table" "mine" "log"}
+  .log{position:static;max-height:280px}
+  .lobby,.home{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:600px) and (orientation:portrait){
+  .rotate-hint{display:block}
+  .table{grid-template-columns:minmax(0,1fr)}
+  .piles{grid-auto-flow:column;justify-content:start;align-items:center}
+  .pile{width:72px;height:96px}
+  .seats{grid-template-columns:minmax(0,1fr)}
+  .card{width:min(190px,calc(50vw - 30px))}
+  .opps{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .mine{grid-template-columns:minmax(0,1fr)}
+}
+
+/* スマホ横向き：1画面に3列で収める */
+@media (orientation:landscape) and (max-height:560px){
+  body{font-size:13px;padding-block:4px 0;line-height:1.45}
+  .topbar{margin-bottom:4px;gap:4px 8px}
+  .topbar h1{font-size:16px}
+  .chip{font-size:11px;padding:0 8px}
+  .btn{padding:6px 12px}
+  .btn.small{padding:2px 8px;font-size:12px}
+  .btn.big{font-size:15px;padding:8px 18px}
+  .screen-game{display:flex;flex-direction:column;height:calc(100dvh - 6px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+  .game{flex:1;min-height:0;gap:8px;
+    grid-template-columns:minmax(150px,24%) minmax(0,1fr) minmax(170px,26%);
+    grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"opps table mine" "opps table log";align-items:stretch}
+  .opps{grid-template-columns:minmax(0,1fr);gap:6px;overflow:auto;align-content:start;min-height:0}
+  .table{overflow:auto;min-height:0;padding:8px 10px;gap:6px;border-radius:10px;align-content:start;grid-template-columns:minmax(0,1fr)}
+  .piles{grid-auto-flow:column;justify-content:start;align-items:center;gap:8px}
+  .pilemeta br{display:none}
+  .pilemeta b{margin-right:8px}
+  .cards{flex-wrap:nowrap}
+  .stage .choices+.cards .card,.stage .cards .card.small{width:120px}
+  .mine{grid-template-columns:minmax(0,1fr);gap:6px}
+  .mine .cardwrap{display:none}
+  .log{position:static;max-height:none;min-height:0;border-radius:10px}
+  .log h3{font-size:13px;padding:4px 10px}
+  .log ol{font-size:11px;padding:2px 0}
+  .log li{padding:2px 8px}
+  .pl{padding:5px 8px;gap:2px;border-radius:9px}
+  .pl.turn{box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 35%,transparent)}
+  .gold .g{font-size:17px}
+  .gold .t{font-size:11px}
+  .bar{height:4px}
+  .chests{min-height:22px;gap:3px}
+  .ch{width:22px;height:22px;font-size:11px;border-radius:4px}
+  .ch.king{width:32px;font-size:10px}
+  button.ch{width:38px;height:38px}
+  .meta{font-size:11px;gap:2px 8px}
+  .piles{gap:4px}
+  .pile{width:34px;height:44px;font-size:9px;box-shadow:2px 2px 0 var(--back-2);border-radius:5px}
+  .pile .num{font-size:13px}
+  .pilemeta{font-size:10px}
+  .stage{gap:6px}
+  .prompt{font-size:15px}
+  .prompt small{font-size:11px}
+  .cards{gap:8px}
+  .cardwrap .cap{font-size:10px}
+  .card{width:min(150px,46%);min-width:128px;padding:5px 7px 7px;gap:3px;border-radius:9px}
+  .card .title{font-size:15px}
+  .card .desc{font-size:11px}
+  .card.small{width:130px}
+  .card.back{min-height:96px}
+  .opt{padding:3px 7px}
+  .opt b{font-size:14px}
+  .opt span{font-size:10px;line-height:1.35}
+  .winner{padding:10px}
+  .winner h2{font-size:20px}
+  .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;padding-top:4px}
+  .compass{display:none}
+  .hero h1{font-size:38px}
+  .hero .sub{font-size:14px;margin:6px 0 10px}
+  .panel{padding:12px 14px}
+  .panel h2{font-size:18px;margin-bottom:6px}
+  .field{margin-bottom:8px;gap:3px}
+  .field input,.field select{padding:6px 10px}
+  .or{margin:8px 0}
+  .lobby{grid-template-columns:minmax(0,1fr) minmax(0,280px);gap:12px}
+  .seat{min-height:0;padding:8px 10px;gap:4px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script id="engine">
+/* ===== ルールエンジン（ルールブック試作版に準拠） ===== */
+const OPT={
+  sail:{n:'航海',d:'宝箱を1個得る'},
+  deep:{n:'深海探索',d:'宝箱を2個見て、1個だけ取る'},
+  cash:{n:'港で換金',d:'宝箱をすべて開けて金貨にする'},
+  raid:{n:'略奪',d:'誰か1人の宝箱を、見ずに1個奪う'},
+  chart:{n:'海図を読む',d:'山札の上2枚を見て、並べ替える'},
+  repair:{n:'修理',d:'風の護符を1枚得る（最大2）'},
+  wind:{n:'帆を張る',d:'もう1枚引いて使う'}
+};
+const HAP={
+  wreck:{n:'沈没船の発見',c:'good',d:'宝箱を2個得る'},
+  tailwind:{n:'追い風',c:'good',d:'もう一度自分の番を行う'},
+  dolphins:{n:'イルカの群れ',c:'good',d:'金貨が最も少ない人が宝箱を2個得る'},
+  mermaid:{n:'人魚の歌',c:'good',d:'全員、風の護符を1枚得る'},
+  storm:{n:'大嵐',c:'bad',d:'全員、宝箱を1個海に捨てる（護符で防げる）'},
+  whirlpool:{n:'大渦',c:'bad',d:'自分の宝箱を半分（切り捨て）失う（護符で防げる）'},
+  monster:{n:'海の怪物',c:'bad',d:'宝箱を一番多く積んでいる人が2個失う（護符で防げる）'},
+  calm:{n:'無風',c:'bad',d:'次の自分の番は休み（護符で防げる）'},
+  ghost:{n:'幽霊船',c:'trick',d:'好きな相手1人の宝箱を1個、海に捨てさせる'},
+  smuggler:{n:'密輸船',c:'trick',d:'金貨が最も少ない人が、宝箱を一番多く持つ人と宝箱をすべて交換する'},
+  tavern:{n:'賭けの酒場',c:'trick',d:'サイコロを振る。偶数で金貨+3、奇数で金貨−2。見送り可'},
+  island:{n:'伝説の島',c:'trick',d:'王の宝箱（金貨10）を得る。表向きで、換金するまで奪われうる'}
+};
+const HAP_LABEL={good:'良いこと',bad:'悪いこと',trick:'駆け引き'};
+const ACTION_SET=[[['sail','cash'],8],[['sail','raid'],8],[['sail','repair'],7],[['deep','chart'],6],[['chart','raid'],6],[['wind','repair'],6],[['cash','raid'],4]];
+const HAP_SET=[['wreck',2],['tailwind',1],['dolphins',1],['mermaid',1],['storm',2],['whirlpool',1],['monster',2],['calm',1],['ghost',1],['smuggler',1],['tavern',1],['island',1]];
+const CHEST_SET=[[0,4],[1,8],[2,8],[3,6],[5,3],[-2,1]];
+const CAP=5, MAXCH=2;
+const CPU_NAMES=['カモメ号','黒潮丸','サンゴ号','北風丸'];
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function nm(s,i){return s.seats[i].name}
+function log(s,t,c){s.logN=(s.logN||0)+1;s.log.push({t,c:c||'',n:s.logN});if(s.log.length>60)s.log.splice(0,s.log.length-60)}
+function idx(s){return s.P.map((_,i)=>i)}
+
+function newGame(players,target){
+  let id=0;const deck=[];
+  for(const [o,n] of ACTION_SET)for(let i=0;i<n;i++)deck.push({id:'c'+(id++),t:'a',o});
+  for(const [k,n] of HAP_SET)for(let i=0;i<n;i++)deck.push({id:'c'+(id++),t:'h',k});
+  const bag=[];let b=0;
+  for(const [v,n] of CHEST_SET)for(let i=0;i<n;i++)bag.push({id:'t'+(b++),v});
+  const s={target,seats:players,P:players.map(()=>({gold:0,chests:[],charms:0,keep:null,skip:false})),
+    deck:shuffle(deck),discard:[],bag:shuffle(bag),turn:Math.floor(Math.random()*players.length),
+    phase:'start',cur:null,sub:{},extra:false,log:[],logN:0,winner:null,turnNo:1};
+  log(s,`出航！ 金貨${target}枚を先に集めた船長の勝ち。最初は${nm(s,s.turn)}の番。`,'sys');
+  return s;
+}
+function drawCard(s){
+  if(!s.deck.length){if(!s.discard.length)return null;s.deck=shuffle(s.discard);s.discard=[];log(s,'山札が尽きたので、捨て札を混ぜ直した。','sys')}
+  return s.deck.shift();
+}
+function ensureDeck(s,n){
+  if(s.deck.length<n&&s.discard.length){s.deck=s.deck.concat(shuffle(s.discard));s.discard=[];log(s,'山札が少ないので、捨て札を混ぜて下に加えた。','sys')}
+}
+function fromBag(s){if(!s.bag.length)return null;return s.bag.splice(Math.floor(Math.random()*s.bag.length),1)[0]}
+function toBag(s,c){if(!c.king)s.bag.push(c)}
+function loseLowest(s,pi,n){
+  const p=s.P[pi];let lost=0;
+  for(let k=0;k<n&&p.chests.length;k++){
+    let mi=0;p.chests.forEach((c,i)=>{if(c.v<p.chests[mi].v)mi=i});
+    const c=p.chests.splice(mi,1)[0];
+    if(c.king)log(s,'王の宝箱が海の底へ沈んだ……','bad');
+    toBag(s,c);lost++;
+  }
+  return lost;
+}
+function giveChest(s,pi,c){
+  const p=s.P[pi];p.chests.push(c);
+  if(p.chests.length>CAP){loseLowest(s,pi,p.chests.length-CAP);log(s,`${nm(s,pi)}の船が満杯。いちばん安い宝箱を海に捨てた。`,'sys')}
+}
+function guard(s,pi){
+  const p=s.P[pi];
+  if(p.charms>0){p.charms--;log(s,`${nm(s,pi)}は風の護符で身を守った。`,'good');return false}
+  return true;
+}
+function minGold(s){const m=Math.min(...s.P.map(p=>p.gold));return idx(s).filter(i=>s.P[i].gold===m)}
+function clockwiseFrom(s,start){const n=s.P.length;return Array.from({length:n},(_,k)=>(start+k)%n)}
+
+function resolveHap(s,card){
+  const me=s.turn,h=HAP[card.k];
+  s.cur=card;
+  log(s,`${nm(s,me)}：ハプニング「${h.n}」`,h.c);
+  const done=()=>{s.discard.push(card);endTurn(s)};
+  switch(card.k){
+    case 'wreck':{let g=0;for(let i=0;i<2;i++){const c=fromBag(s);if(c){giveChest(s,me,c);g++}}log(s,`${nm(s,me)}は宝箱を${g}個引き上げた。`);return done()}
+    case 'tailwind':s.extra=true;return done();
+    case 'dolphins':{const ids=minGold(s);ids.forEach(i=>{for(let k=0;k<2;k++){const c=fromBag(s);if(c)giveChest(s,i,c)}});log(s,`${ids.map(i=>nm(s,i)).join('、')}が宝箱を2個得た。`,'good');return done()}
+    case 'mermaid':s.P.forEach(p=>p.charms=Math.min(MAXCH,p.charms+1));log(s,'全員が風の護符を1枚得た（最大2枚）。','good');return done();
+    case 'storm':{let any=false;s.P.forEach((p,i)=>{if(p.chests.length){any=true;if(guard(s,i)){loseLowest(s,i,1);log(s,`${nm(s,i)}は宝箱を1個失った。`,'bad')}}});if(!any)log(s,'誰も宝箱を積んでいなかった。','sys');return done()}
+    case 'whirlpool':{const n=Math.floor(s.P[me].chests.length/2);if(n>0){if(guard(s,me)){loseLowest(s,me,n);log(s,`${nm(s,me)}は宝箱を${n}個失った。`,'bad')}}else log(s,'失う宝箱はなかった。','sys');return done()}
+    case 'monster':{const mx=Math.max(...s.P.map(p=>p.chests.length));if(mx>0)s.P.forEach((p,i)=>{if(p.chests.length===mx&&guard(s,i)){const l=loseLowest(s,i,2);log(s,`${nm(s,i)}は怪物に宝箱を${l}個奪われた。`,'bad')}});else log(s,'怪物は何も見つけられなかった。','sys');return done()}
+    case 'calm':if(guard(s,me)){s.P[me].skip=true;log(s,`${nm(s,me)}は次の番を休む。`,'bad')}return done();
+    case 'ghost':{const t=idx(s).filter(i=>i!==me&&s.P[i].chests.length);if(!t.length){log(s,'狙える船がいなかった。','sys');return done()}s.phase='ghostTarget';s.sub={};return}
+    case 'smuggler':{
+      const poor=minGold(s);const pi=clockwiseFrom(s,me).find(i=>poor.includes(i));
+      let best=-1,bc=-1;s.P.forEach((p,i)=>{if(i!==pi&&p.chests.length>bc){bc=p.chests.length;best=i}});
+      if(best>=0&&bc>s.P[pi].chests.length){const a=s.P[pi].chests;s.P[pi].chests=s.P[best].chests;s.P[best].chests=a;log(s,`${nm(s,pi)}が${nm(s,best)}と宝箱をすべて交換した！`,'trick')}
+      else log(s,`${nm(s,pi)}に得になる交換相手はいなかった。`,'sys');
+      return done();
+    }
+    case 'tavern':s.phase='bet';s.sub={};return;
+    case 'island':s.island=true;giveChest(s,me,{id:'king',v:10,king:true});log(s,`${nm(s,me)}が伝説の島で王の宝箱（金貨10）を手に入れた！`,'trick');endTurn(s);return;
+  }
+}
+function checkWin(s){
+  const w=idx(s).filter(i=>s.P[i].gold>=s.target);
+  if(w.length){w.sort((a,b)=>s.P[b].gold-s.P[a].gold);s.winner=w[0];s.phase='over';log(s,`${nm(s,w[0])}が金貨${s.P[w[0]].gold}枚を集めて勝利！`,'win');return true}
+  return false;
+}
+function endTurn(s){
+  s.sub={};
+  if(checkWin(s))return;
+  if(s.extra){s.extra=false;s.phase='start';log(s,`追い風！ ${nm(s,s.turn)}がもう一度行動する。`,'good');return}
+  let n=s.turn;
+  for(let g=0;g<s.P.length*2;g++){n=(n+1)%s.P.length;if(s.P[n].skip){s.P[n].skip=false;log(s,`${nm(s,n)}は無風で1回休み。`,'sys');continue}break}
+  s.turn=n;s.phase='start';s.turnNo++;
+}
+function doOpt(s,opt){
+  const me=s.turn,p=s.P[me];
+  switch(opt){
+    case 'sail':{const c=fromBag(s);if(c)giveChest(s,me,c);log(s,c?`${nm(s,me)}：航海で宝箱を1個得た。`:'宝箱がもう残っていない。');endTurn(s);return true}
+    case 'deep':{const o=[fromBag(s),fromBag(s)].filter(Boolean);if(!o.length){log(s,'宝箱がもう残っていない。','sys');endTurn(s);return true}s.sub={opts:o};s.phase='deep';log(s,`${nm(s,me)}：深海探索に潜る。`);return true}
+    case 'cash':{const n=p.chests.length;const sum=p.chests.reduce((a,c)=>a+c.v,0);p.chests.forEach(c=>toBag(s,c));p.chests=[];const before=p.gold;p.gold=Math.max(0,p.gold+sum);
+      log(s,n?`${nm(s,me)}：港で宝箱${n}個を換金 → 金貨${sum>=0?'+':''}${sum}（計${p.gold}）`:`${nm(s,me)}：港に寄ったが、換金する宝箱がなかった。`,n?'cash':'sys');
+      if(p.gold<before)log(s,'呪いの箱が混じっていた！','bad');endTurn(s);return true}
+    case 'raid':{const t=idx(s).filter(i=>i!==me&&s.P[i].chests.length);if(!t.length){log(s,`${nm(s,me)}：略奪に出たが、狙える船がいなかった。`,'sys');endTurn(s);return true}s.phase='raidTarget';s.sub={};log(s,`${nm(s,me)}：略奪に向かう。`);return true}
+    case 'chart':ensureDeck(s,2);if(s.deck.length<2){log(s,'山札が少なすぎて海図が読めない。','sys');endTurn(s);return true}s.phase='chart';s.sub={};return true;
+    case 'repair':p.charms=Math.min(MAXCH,p.charms+1);log(s,`${nm(s,me)}：修理して風の護符を得た（${p.charms}枚）。`);endTurn(s);return true;
+    case 'wind':{log(s,`${nm(s,me)}：帆を張って、もう1枚引く。`);const c=drawCard(s);if(!c){endTurn(s);return true}s.cur=c;if(c.t==='h')resolveHap(s,c);else{s.phase='choose';s.sub={sail:true}}return true}
+  }
+  return false;
+}
+/* a: {type,...} 手番プレイヤーの行動。正しくなければ false */
+function act(s,a){
+  const me=s.turn,p=s.P[me];
+  switch(a.type){
+    case 'draw':{if(s.phase!=='start')return false;const c=drawCard(s);if(!c){log(s,'山札も捨て札も空っぽだ。','sys');endTurn(s);return true}
+      s.cur=c;if(c.t==='h')resolveHap(s,c);else{log(s,`${nm(s,me)}はアクションカードを引いた。`,'sys');s.phase='choose';s.sub={sail:false}}return true}
+    case 'keepOnly':if(s.phase!=='choose'||s.sub.sail||p.keep)return false;p.keep=s.cur;s.cur=null;log(s,`${nm(s,me)}はカードをキープして番を終えた。`);endTurn(s);return true;
+    case 'use':{if(s.phase!=='choose')return false;let card;
+      if(a.from==='keep'){if(!p.keep||s.sub.sail||!p.keep.o.includes(a.opt))return false;card=p.keep;p.keep=s.cur}
+      else{if(!s.cur||!s.cur.o.includes(a.opt))return false;card=s.cur}
+      s.discard.push(card);s.cur=card;if(a.from==='keep')log(s,`${nm(s,me)}はキープしていたカードを使った。`,'sys');
+      return doOpt(s,a.opt)}
+    case 'raidTarget':if(s.phase!=='raidTarget'||a.t===me||!s.P[a.t]||!s.P[a.t].chests.length)return false;s.sub={t:a.t};s.phase='raidPick';return true;
+    case 'raidPick':{if(s.phase!=='raidPick')return false;const tp=s.P[s.sub.t];const c=tp.chests[a.i];if(!c)return false;tp.chests.splice(a.i,1);
+      log(s,c.king?`${nm(s,me)}が${nm(s,s.sub.t)}から王の宝箱を奪った！`:`${nm(s,me)}が${nm(s,s.sub.t)}から宝箱を1個奪った。`,'trick');giveChest(s,me,c);endTurn(s);return true}
+    case 'ghostTarget':{if(s.phase!=='ghostTarget'||a.t===me||!s.P[a.t]||!s.P[a.t].chests.length)return false;loseLowest(s,a.t,1);
+      log(s,`幽霊船が${nm(s,a.t)}の宝箱を1個、海に沈めた。`,'bad');s.discard.push(s.cur);endTurn(s);return true}
+    case 'bet':{if(s.phase!=='bet')return false;s.discard.push(s.cur);
+      if(!a.roll){log(s,`${nm(s,me)}は賭けを見送った。`,'sys');endTurn(s);return true}
+      const d=1+Math.floor(Math.random()*6);s.dice=d;
+      if(d%2===0){p.gold+=3;log(s,`サイコロは${d}。${nm(s,me)}は金貨+3（計${p.gold}）。`,'good')}
+      else{p.gold=Math.max(0,p.gold-2);log(s,`サイコロは${d}。${nm(s,me)}は金貨−2（計${p.gold}）。`,'bad')}
+      endTurn(s);return true}
+    case 'deepPick':{if(s.phase!=='deep')return false;const o=s.sub.opts;const c=o[a.i];if(!c)return false;o.forEach((x,i)=>{if(i!==a.i)toBag(s,x)});
+      giveChest(s,me,c);log(s,`${nm(s,me)}は深海から宝箱を1個引き上げた。`);endTurn(s);return true}
+    case 'chart':if(s.phase!=='chart')return false;if(a.swap){[s.deck[0],s.deck[1]]=[s.deck[1],s.deck[0]]}log(s,`${nm(s,me)}は海図を読んで、山札の上を整えた。`);endTurn(s);return true;
+  }
+  return false;
+}
+
+/* ===== CPU ===== */
+function cpuChoose(s){
+  const me=s.turn,p=s.P[me];const opps=idx(s).filter(i=>i!==me);
+  const threat=i=>s.P[i].gold+s.P[i].chests.reduce((a,c)=>a+(c.king?10:1.8),0);
+  const pickBy=(list,f)=>list.map(i=>[i,f(i)+Math.random()*0.05]).sort((a,b)=>b[1]-a[1])[0][0];
+  switch(s.phase){
+    case 'choose':{
+      const val=p.chests.reduce((a,c)=>a+c.v,0);const full=p.chests.length>=CAP;
+      const sc=(o,rest)=>{let v=0;
+        switch(o){
+          case 'cash':v=!p.chests.length?-1:(p.gold+val>=s.target?100:(val>=7||p.chests.length>=4||p.chests.some(c=>c.king))?val*1.3:val*0.45);break;
+          case 'sail':v=full?0.2:2.6;break;
+          case 'deep':v=full?0.3:3.2;break;
+          case 'raid':{const t=opps.filter(i=>s.P[i].chests.length);v=t.length?(full?0.6:2.8)+(t.some(i=>s.P[i].chests.some(c=>c.king))?8:0):-1;break}
+          case 'repair':v=p.charms===0?2.2:p.charms===1?1.3:-0.5;break;
+          case 'chart':v=1.2;break;
+          case 'wind':v=2.3;break;
+        }
+        if(rest&&rest.o&&rest.o.includes('cash')&&o!=='cash')v+=0.9;
+        return v+Math.random()*0.4;};
+      const c=[];
+      s.cur.o.forEach(o=>c.push({a:{type:'use',from:'drawn',opt:o},v:sc(o,p.keep)}));
+      if(!s.sub.sail){
+        if(p.keep)p.keep.o.forEach(o=>c.push({a:{type:'use',from:'keep',opt:o},v:sc(o,s.cur)}));
+        else c.push({a:{type:'keepOnly'},v:s.cur.o.includes('cash')&&p.chests.length<3?1.4:0.2});
+      }
+      c.sort((x,y)=>y.v-x.v);return c[0].a;
+    }
+    case 'raidTarget':{const t=opps.filter(i=>s.P[i].chests.length);const k=t.find(i=>s.P[i].chests.some(c=>c.king));return {type:'raidTarget',t:k!==undefined?k:pickBy(t,i=>s.P[i].chests.length*2+s.P[i].gold*0.3)}}
+    case 'raidPick':{const ch=s.P[s.sub.t].chests;const k=ch.findIndex(c=>c.king);return {type:'raidPick',i:k>=0?k:Math.floor(Math.random()*ch.length)}}
+    case 'ghostTarget':{const t=opps.filter(i=>s.P[i].chests.length);return {type:'ghostTarget',t:pickBy(t,threat)}}
+    case 'bet':return {type:'bet',roll:p.gold+3>=s.target||p.gold<=1||Math.random()<0.5};
+    case 'deep':{const o=s.sub.opts;let bi=0;o.forEach((c,i)=>{if(c.v>o[bi].v)bi=i});return {type:'deepPick',i:bi}}
+    case 'chart':{const rank=c=>c.t==='a'?2:HAP[c.k].c==='bad'?0:HAP[c.k].c==='trick'?1:3;return {type:'chart',swap:rank(s.deck[1])<rank(s.deck[0])}}
+  }
+  return null;
+}
+/* CPUの1ステップ：引く → (次のステップで) 行動を最後まで */
+function cpuStep(s){
+  if(s.phase==='over')return false;
+  if(s.phase==='start')return act(s,{type:'draw'});
+  let changed=false;
+  for(let g=0;g<8&&s.phase!=='start'&&s.phase!=='over';g++){
+    const a=cpuChoose(s);if(!a||!act(s,a))break;changed=true;
+    if(s.phase==='choose')break;
+  }
+  return changed;
+}
+</script>
+
+<script>
+/* ===== UI ・ オンライン ===== */
+const $app=document.getElementById('app');
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SEATC=['var(--seat0)','var(--seat1)','var(--seat2)','var(--seat3)'];
+const TARGETS=[20,30,40],DEF_TARGET=30;
+const TAB=Math.random().toString(36).slice(2,10);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clone=o=>JSON.parse(JSON.stringify(o));
+function lsGet(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function ssGet(k){try{return sessionStorage.getItem(k)}catch(e){return null}}
+function ssSet(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}
+
+let online='checking',net=null,myUid=null;
+let mode='home';           // home | local | room
+let L=null;                // ひとりプレイの状態
+let room=null,pass='',busy=false,spectator=false,roomGone='';
+let cpuTimer=null,lastLogN=0,homeMsg='';
+let myName=lsGet('kiri-name','');
+
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3600)}
+
+/* ---- 合言葉 → ルームID ---- */
+async function roomKey(p){
+  const norm=p.normalize('NFKC').trim().toLowerCase();
+  try{const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('kiri:'+norm));
+    return 'r'+[...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,'0')).join('')}
+  catch(e){let h=2166136261;for(const ch of norm){h^=ch.codePointAt(0);h=Math.imul(h,16777619)>>>0}return 'r'+h.toString(16)+norm.length}
+}
+
+/* ===== ルーム操作（どちらの通信方式でも共通） ===== */
+function freshRoom(uid,name){return {v:2,host:uid,status:'lobby',target:DEF_TARGET,seats:[{kind:'human',uid,name},{kind:'empty'},{kind:'empty'},{kind:'empty'}],game:null,seq:1,updatedAt:Date.now()}}
+const NOWRITE=new Set([false,'full','spectate']);
+function humansLeft(d){return d.seats.some(x=>x.kind==='human')||(d.status==='playing'&&d.game&&d.game.seats.some(x=>x.kind==='human'))}
+function passHost(d,uid){if(d.host!==uid)return;const h=d.seats.find(x=>x.kind==='human')||(d.game&&d.game.seats.find(x=>x.kind==='human'));if(h)d.host=h.uid}
+function seatToCpu(d,uid,why){
+  if(!d.game)return false;const gi=d.game.seats.findIndex(x=>x.uid===uid);if(gi<0)return false;
+  const n=d.game.seats[gi].name;d.game.seats[gi]={kind:'cpu',name:n+'（CPU）'};log(d.game,`${n}${why}。CPUが舵を引き継ぐ。`,'sys');return true;
+}
+const OPS={
+  join(d,uid,{name}){
+    name=String(name||'船長').slice(0,12);
+    if(d.status==='playing')return d.game&&d.game.seats.some(x=>x.uid===uid)?'rejoin':'spectate';
+    const i=d.seats.findIndex(x=>x.uid===uid);if(i>=0){d.seats[i].name=name;return 'rejoin'}
+    const e=d.seats.findIndex(x=>x.kind==='empty');if(e<0)return 'full';
+    d.seats[e]={kind:'human',uid,name};return 'joined';
+  },
+  leave(d,uid){
+    const si=d.seats.findIndex(x=>x.uid===uid);if(si>=0)d.seats[si]={kind:'empty'};
+    if(d.status==='playing')seatToCpu(d,uid,'が船を降りた');
+    if(!humansLeft(d))return 'delete';
+    passHost(d,uid);return true;
+  },
+  drop(d,uid){ /* 通信が切れた参加者（直接接続方式のみ） */
+    const si=d.seats.findIndex(x=>x.uid===uid);if(si>=0)d.seats[si]={kind:'empty'};
+    if(d.status==='playing')seatToCpu(d,uid,'との通信が切れた');
+    return true;
+  },
+  seat(d,uid,{i}){if(d.host!==uid||d.status!=='lobby'||!d.seats[i])return false;const s=d.seats[i];
+    if(s.kind==='empty')d.seats[i]={kind:'closed'};else if(s.kind==='closed')d.seats[i]={kind:'empty'};else return false;return true},
+  kick(d,uid,{i}){if(d.host!==uid||d.status!=='lobby'||!d.seats[i]||d.seats[i].uid===uid||d.seats[i].kind!=='human')return false;d.seats[i]={kind:'empty'};return true},
+  target(d,uid,{v}){if(d.host!==uid||d.status!=='lobby'||!TARGETS.includes(v))return false;d.target=v;return true},
+  start(d,uid){
+    if(d.host!==uid||d.status!=='lobby')return false;
+    let ci=0;const players=d.seats.filter(x=>x.kind!=='closed').map(x=>x.kind==='human'?{kind:'human',uid:x.uid,name:x.name}:{kind:'cpu',name:CPU_NAMES[ci++]});
+    if(players.length<2)return false;d.game=newGame(players,TARGETS.includes(d.target)?d.target:DEF_TARGET);d.status='playing';return true;
+  },
+  backLobby(d,uid){if(d.host!==uid||d.status!=='playing')return false;d.status='lobby';d.game=null;if(!TARGETS.includes(d.target))d.target=DEF_TARGET;return true},
+  toCpu(d,uid,{i}){if(d.host!==uid||!d.game)return false;const s=d.game.seats[i];if(!s||s.kind!=='human'||s.uid===uid)return false;
+    const li=d.seats.findIndex(x=>x.uid===s.uid);if(li>=0)d.seats[li]={kind:'empty'};return seatToCpu(d,s.uid,'の船を交代した')},
+  act(d,uid,{a}){const g=d.game;if(!g||d.status!=='playing'||!a||g.seats[g.turn].uid!==uid)return false;return act(g,a)},
+  cpu(d,uid,{seq}){if(seq!=null&&d.seq!==seq)return false;if(d.status!=='playing'||!d.game)return false;const g=d.game;if(g.seats[g.turn].kind!=='cpu')return false;return cpuStep(g)}
+};
+
+/* ===== 通信方式1：claude.ai の共有データ ===== */
+function DbNet(dbx,uid){
+  let ref=null,lock=null,unsub=null,timer=null,chain=Promise.resolve();
+  async function withLock(fn){
+    let ok=false;
+    for(let i=0;i<20;i++){
+      try{const r=await lock.acquire({holder:uid+':'+TAB,ttlMs:1500});if(r.acquired){ok=true;break}}catch(e){if(e&&e.code==='invalid_argument')throw e}
+      await sleep(200+Math.random()*250);
+    }
+    if(!ok)throw {code:'busy'};
+    return fn();
+  }
+  function mutate(fn){
+    const p=chain.then(()=>withLock(async()=>{
+      const snap=await ref.get();if(!snap.exists)return false;
+      const d=clone(snap.data());const r=fn(d);
+      if(NOWRITE.has(r))return r;
+      if(r==='delete'){await ref.delete();return r}
+      d.seq=(d.seq||0)+1;d.updatedAt=Date.now();await ref.set(d);return r;
+    }));
+    chain=p.catch(()=>{});return p;
+  }
+  return {
+    kind:'db',uid,
+    async join(p,name,cb){
+      const rid=await roomKey(p);
+      ref=dbx.doc('rooms/'+rid);lock=dbx.doc('rooms/'+rid+'/lock/w');
+      const res=await withLock(async()=>{
+        const snap=await ref.get();const now=Date.now();
+        const d=snap.exists?clone(snap.data()):null;
+        if(!d||now-(d.updatedAt||0)>3*3600e3){await ref.set(freshRoom(uid,name));return 'created'}
+        const r=OPS.join(d,uid,{name});if(NOWRITE.has(r))return r;
+        d.seq=(d.seq||0)+1;d.updatedAt=now;await ref.set(d);return r;
+      });
+      if(res==='full')return res;
+      timer=setTimeout(()=>{if(!room)toast('ルームの情報をまだ受け取れていません。通信を確認してください。')},10000);
+      unsub=ref.onSnapshot(snap=>{
+        if(!snap.metadata.fromCache)clearTimeout(timer);
+        if(!snap.exists){cb.gone('全員が退出したため、ルームはなくなりました。');return}
+        cb.room(snap.data());
+      },err=>{clearTimeout(timer);handleErr(err)});
+      return res;
+    },
+    op(name,args){return mutate(d=>OPS[name](d,uid,args||{}))},
+    async leave(){try{if(room&&!spectator)await mutate(d=>OPS.leave(d,uid))}catch(e){}if(unsub)unsub();unsub=null;clearTimeout(timer)},
+    cpuDelay(){return room&&room.host===uid?1100:9000+Math.random()*2000},
+    note:''
+  };
+}
+
+/* ===== 通信方式2：ブラウザ同士の直接接続（GitHub Pages など） ===== */
+const PEER_SRC='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+function loadPeerLib(){
+  return new Promise((res,rej)=>{
+    if(window.Peer)return res();
+    const s=document.createElement('script');s.src=PEER_SRC;s.onload=()=>window.Peer?res():rej({code:'lib'});s.onerror=()=>rej({code:'lib'});document.head.appendChild(s);
+  });
+}
+function PeerNet(uid){
+  let peer=null,hostConn=null,isHostPeer=false,cb=null,state=null,closing=false;
+  const conns=new Set();
+  const broadcast=()=>{for(const c of conns)if(c.open){try{c.send({t:'state',room:state})}catch(e){}}};
+  const commit=()=>{state.seq++;state.updatedAt=Date.now();cb.room(clone(state));broadcast()};
+  function hostApply(name,from,args){
+    if(!OPS[name])return false;
+    const r=OPS[name](state,from,args||{});
+    if(NOWRITE.has(r))return r;
+    if(r==='delete')return r;
+    commit();return r;
+  }
+  function openPeer(id){
+    return new Promise(res=>{
+      const p=id?new Peer(id,{debug:0}):new Peer({debug:0});let done=false;
+      const fin=v=>{if(!done){done=true;res(v)}};
+      p.on('open',()=>fin({peer:p}));
+      p.on('error',e=>fin({peer:p,err:e.type||'error'}));
+      setTimeout(()=>fin({peer:p,err:'timeout'}),12000);
+    });
+  }
+  function setupHost(name){
+    isHostPeer=true;state=freshRoom(uid,name);
+    peer.on('disconnected',()=>{if(!closing){try{peer.reconnect()}catch(e){}}});
+    peer.on('connection',c=>{
+      conns.add(c);
+      c.on('data',m=>{
+        if(!m||typeof m!=='object')return;
+        if(m.t==='hello'&&!c.uid){
+          c.uid=String(m.uid||'').slice(0,40)||('g'+Math.random().toString(36).slice(2));
+          const r=OPS.join(state,c.uid,{name:m.name});
+          if(r==='full'){try{c.send({t:'full'})}catch(e){}setTimeout(()=>c.close(),400);return}
+          if(!NOWRITE.has(r)){state.seq++;state.updatedAt=Date.now();cb.room(clone(state))}
+          try{c.send({t:'welcome',res:r,room:state})}catch(e){}
+          broadcast();
+        }else if(m.t==='op'&&c.uid&&typeof m.name==='string'&&!['cpu','join','drop'].includes(m.name)){
+          hostApply(m.name,c.uid,m.args);
+        }
+      });
+      c.on('close',()=>{conns.delete(c);if(closing||!c.uid)return;
+        if(![...conns].some(x=>x.uid===c.uid)){if(OPS.drop(state,c.uid))commit()}});
+      c.on('error',()=>{});
+    });
+    cb.room(clone(state));
+  }
+  function setupClient(key,name){
+    return new Promise(resolve=>{
+      const c=peer.connect(key,{reliable:true});hostConn=c;let done=false;
+      const fin=v=>{if(!done){done=true;clearTimeout(to);resolve(v)}};
+      const to=setTimeout(()=>fin({err:'timeout'}),12000);
+      peer.on('error',e=>{if(!done)fin({err:e.type||'error'})});
+      c.on('open',()=>{try{c.send({t:'hello',uid,name})}catch(e){}});
+      c.on('data',m=>{
+        if(!m||typeof m!=='object')return;
+        if(m.t==='full')fin('full');
+        else if(m.t==='welcome'){cb.room(m.room);fin(m.res)}
+        else if(m.t==='state'&&done)cb.room(m.room);
+      });
+      c.on('close',()=>{if(done&&!closing)cb.gone('ホストとの接続が切れました。ホストがページを閉じたか、通信が途切れました。')});
+      c.on('error',()=>{});
+    });
+  }
+  return {
+    kind:'peer',uid,
+    async join(p,name,callbacks){
+      cb=callbacks;closing=false;isHostPeer=false;conns.clear();
+      await loadPeerLib();
+      const key='kirinoumi-'+(await roomKey(p));
+      let r=await openPeer(key);peer=r.peer;
+      if(!r.err){setupHost(name);return 'created'}
+      try{peer.destroy()}catch(e){}
+      if(r.err!=='unavailable-id')throw {code:'peer',type:r.err};
+      r=await openPeer(null);peer=r.peer;
+      if(r.err){try{peer.destroy()}catch(e){}throw {code:'peer',type:r.err}}
+      const res=await setupClient(key,name);
+      if(res&&res.err){try{peer.destroy()}catch(e){}throw {code:'peer',type:res.err==='peer-unavailable'?'gone':res.err}}
+      return res;
+    },
+    async op(name,args){
+      if(isHostPeer){const r=hostApply(name,uid,args);if(r==='delete')cb.gone('ルームを閉じました。');return r}
+      if(hostConn&&hostConn.open){hostConn.send({t:'op',name,args:args||{}});return true}
+      throw {code:'peer',type:'network'};
+    },
+    async leave(){
+      closing=true;
+      try{if(!isHostPeer&&hostConn&&hostConn.open&&!spectator){hostConn.send({t:'op',name:'leave',args:{}});await sleep(250)}}catch(e){}
+      try{peer&&peer.destroy()}catch(e){}
+      peer=null;hostConn=null;conns.clear();
+    },
+    cpuDelay(){return isHostPeer?1100:null},
+    get isHostPeer(){return isHostPeer},
+    note:'インターネット経由でホストのブラウザに直接つなぎます。ホストがページを閉じるとルームは終わります。'
+  };
+}
+
+function handleErr(e){
+  const c=e&&e.code;
+  if(c==='invalid_argument'){online='readonly';toast('書き込みが拒否されました。このページの編集権限が必要です。')}
+  else if(c==='busy')toast('ほかの操作と重なりました。もう一度押してください。');
+  else if(c==='quota_exceeded')toast('保存領域がいっぱいです。');
+  else if(c==='lib')toast('通信用のライブラリを読み込めませんでした。ネットワークを確認してください。');
+  else if(c==='peer'){
+    const m={gone:'ルームが見つかりませんでした。もう一度試してください。',timeout:'接続がタイムアウトしました。もう一度試してください。',network:'接続サーバーにつながりません。ネットワークを確認してください。','server-error':'接続サーバーが混み合っています。少し待ってから試してください。','socket-error':'接続サーバーにつながりません。','browser-incompatible':'このブラウザは直接接続に対応していません。'};
+    toast(m[e.type]||'接続に失敗しました。もう一度試してください。');
+  }
+  else toast('通信に失敗しました。少し待ってからもう一度押してください。');
+}
+
+/* ---- ルームへ入る ---- */
+const roomCb={
+  room(r){room=r;if(spectator&&room.game&&room.game.seats.some(x=>x.uid===myUid))spectator=false;render();scheduleCpu()},
+  gone(msg){if(mode!=='room')return;roomGone=msg;room=null;clearTimeout(cpuTimer);render()}
+};
+async function enterRoom(){
+  if(busy||!net)return;
+  const nameEl=document.getElementById('in-name'),passEl=document.getElementById('in-pass');
+  const name=(nameEl.value||'').trim().slice(0,12),p=(passEl.value||'').trim();
+  if(!name){homeMsg='船長の名前を入れてください。';render();return}
+  if(p.length<3){homeMsg='合言葉は3文字以上にしてください。';render();return}
+  myName=name;lsSet('kiri-name',name);pass=p;homeMsg='';
+  busy=true;mode='room';room=null;roomGone='';spectator=false;render();
+  let res;
+  try{res=await net.join(p,name,roomCb)}
+  catch(e){busy=false;mode='home';handleErr(e);render();return}
+  busy=false;
+  if(res==='full'){await net.leave();mode='home';room=null;homeMsg='このルームは満席です（最大4人）。';render();return}
+  spectator=res==='spectate';
+  if(res==='created')toast('新しいルームを開きました。同じ合言葉で仲間が入れます。');
+  if(spectator)toast('ゲームが進行中なので、観戦で入りました。');
+  render();scheduleCpu();
+}
+async function leaveRoom(){
+  clearTimeout(cpuTimer);
+  if(net)await net.leave();
+  room=null;mode='home';roomGone='';render();
+}
+async function doOp(name,args){
+  if(busy)return;busy=true;render();
+  try{return await net.op(name,args)}catch(e){handleErr(e)}
+  finally{busy=false;render()}
+}
+
+/* ---- ひとりプレイ ---- */
+function startLocal(){
+  const name=((document.getElementById('in-name')||{}).value||myName||'').trim().slice(0,12)||'あなた';
+  myName=name;lsSet('kiri-name',name);
+  const t=+(document.getElementById('in-target-local')||{value:DEF_TARGET}).value;
+  L=newGame([{kind:'human',uid:'local',name},...CPU_NAMES.slice(0,3).map(n=>({kind:'cpu',name:n}))],TARGETS.includes(t)?t:DEF_TARGET);
+  mode='local';lastLogN=0;render();scheduleCpu();
+}
+
+function G(){return mode==='local'?L:(room&&room.status==='playing'?room.game:null)}
+function mySeat(g){if(!g)return -1;return g.seats.findIndex(x=>x.uid===(mode==='local'?'local':myUid))}
+function isHost(){return mode==='room'&&room&&room.host===myUid}
+
+function perform(a){
+  if(mode==='local'){if(L.seats[L.turn].kind!=='human')return;if(act(L,a)){render();scheduleCpu()}return}
+  doOp('act',{a});
+}
+function scheduleCpu(){
+  clearTimeout(cpuTimer);
+  const g=G();if(!g||g.phase==='over')return;
+  if(g.seats[g.turn].kind!=='cpu')return;
+  if(mode==='local'){cpuTimer=setTimeout(()=>{if(L&&L.seats[L.turn].kind==='cpu'){cpuStep(L);render();scheduleCpu()}},g.phase==='start'?750:1050);return}
+  if(!net||(spectator&&!isHost()))return;
+  const delay=net.cpuDelay();if(delay==null)return;
+  const seq=room.seq;
+  cpuTimer=setTimeout(()=>{Promise.resolve(net.op('cpu',{seq})).catch(()=>{})},delay);
+}
+
+/* ===== 描画 ===== */
+function render(){
+  if(mode==='home')return renderHome();
+  if(mode==='local')return renderGame(L);
+  if(mode==='room'){
+    if(roomGone)return renderGone();
+    if(!room){$app.innerHTML=topbar()+`<div class="panel"><p class="prompt">ルームに接続しています…</p></div>`;return}
+    if(room.status==='playing'&&room.game)return renderGame(room.game);
+    return renderLobby();
+  }
+}
+const compass=`<svg class="compass" viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="currentColor"><circle cx="60" cy="60" r="54" stroke-width="1.5"/><circle cx="60" cy="60" r="46" stroke-width="1" stroke-dasharray="2 4"/></g><g fill="currentColor"><path d="M60 8 L67 60 L60 112 L53 60Z" opacity=".9"/><path d="M8 60 L60 53 L112 60 L60 67Z" opacity=".55"/></g><circle cx="60" cy="60" r="5" fill="var(--brass)"/><text x="60" y="6" font-size="9" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono,monospace">N</text></svg>`;
+function onlineNote(){
+  switch(online){
+    case 'checking':return `<p class="note">オンライン機能を準備しています…</p>`;
+    case 'unavailable':return `<div class="alert">このページの開き方ではオンライン対戦が使えません。claude.ai にサインインした状態で開くと使えます。ひとりプレイはこのまま遊べます。</div>`;
+    case 'noid':return `<div class="alert">オンライン対戦にはサインインが必要です。ひとりプレイはこのまま遊べます。</div>`;
+    case 'readonly':return `<div class="alert">このページを閲覧のみで開いているため、ルームに書き込めません。共有した人に編集できる権限をもらってください。ひとりプレイは遊べます。</div>`;
+  }
+  return net&&net.note?`<p class="note">${net.note}</p>`:'';
+}
+function targetOptions(sel){return TARGETS.map((v,i)=>`<option value="${v}" ${v===sel?'selected':''}>金貨${v}枚で勝利（${['短め','標準','長め'][i]}）</option>`).join('')}
+function renderHome(){
+  const ok=online==='ok';
+  const pv=(document.getElementById('in-pass')||{}).value||'';
+  const nv=document.getElementById('in-name');if(nv)myName=nv.value;
+  const tv=+((document.getElementById('in-target-local')||{}).value||DEF_TARGET);
+  $app.innerHTML=`
+  <div class="home">
+    <section class="hero">
+      ${compass}
+      <h1>霧の果ての海</h1>
+      <p class="sub">百年に一度、霧が晴れる。四人の船長が同じ海へ漕ぎ出し、宝箱を積んでは港へ戻る。積むほど稼げて、積むほど狙われる。</p>
+      <div class="facts"><span>プレイ人数 <b>1–4</b></span><span>勝利条件 金貨 <b>20/30/40</b> 枚</span><span>山札 <b>60</b> 枚</span><span>宝箱 <b>30</b> 個</span></div>
+      <details class="rules"><summary>ルール早見</summary>
+        <ul>
+          <li>自分の番に共通の山札から1枚引く。</li>
+          <li>アクションカードは2つの行動から1つを選ぶ。キープ（1枚まで）していたカードと入れ替えて使ってもよい。キープが空なら、引いたカードをキープして番を終えてもよい。</li>
+          <li>ハプニングはすぐに解決。悪いことは風の護符1枚で防げる（自動で使われる）。</li>
+          <li>宝箱の中身は自分にしか見えない。港で換金して初めて金貨になる。船に積めるのは5個まで。</li>
+          <li>金貨を目標枚数集めた船長がその場で勝利。</li>
+        </ul>
+      </details>
+    </section>
+    <section class="panel">
+      <h2>出航の準備</h2>
+      <div class="field"><label for="in-name">船長の名前</label><input id="in-name" maxlength="12" value="${esc(myName)}" placeholder="例：アカネ" autocomplete="nickname"></div>
+      <div class="field"><label for="in-pass">合言葉</label><input id="in-pass" maxlength="40" value="${esc(pv)}" placeholder="仲間と決めた言葉（3文字以上）" autocomplete="off"></div>
+      <div class="actions"><button class="btn primary" data-a="enter" ${ok&&!busy?'':'disabled'}>ルームに入る／作る</button></div>
+      <p class="note">同じ合言葉を入れた人が同じルームに入ります。最初に入った人がホストになり、空いた席にはCPUが入ります。</p>
+      ${onlineNote()}
+      ${homeMsg?`<div class="alert">${esc(homeMsg)}</div>`:''}
+      <div class="or">または</div>
+      <div class="field"><label for="in-target-local">ひとりで遊ぶ（CPU 3隻と対戦）</label>
+        <select id="in-target-local">${targetOptions(TARGETS.includes(tv)?tv:DEF_TARGET)}</select></div>
+      <button class="btn" data-a="local">ひとりで出航する</button>
+    </section>
+  </div>`;
+}
+function topbar(){
+  const g=G();
+  const fs=document.fullscreenEnabled?`<button class="btn small" data-a="fullscreen">${document.fullscreenElement?'全画面を終了':'全画面'}</button>`:'';
+  return `<div class="topbar"><h1>霧の果ての海</h1>
+    ${mode==='room'?`<span class="chip">合言葉 <b>${esc(pass)}</b></span>`:`<span class="chip">ひとりプレイ</span>`}
+    ${g?`<span class="chip">目標 <b class="num">金貨 ${g.target}</b></span><span class="chip">ターン <b class="num">${g.turnNo}</b></span>`:''}
+    ${spectator?`<span class="chip">観戦中</span>`:''}
+    <span class="spacer"></span>${fs}
+    <button class="btn small" data-a="leave">${mode==='local'?'やめる':'ルームを出る'}</button></div>`;
+}
+function renderGone(){
+  $app.innerHTML=`<div class="panel"><h2>ルームが閉じられました</h2><p class="note">${esc(roomGone)}</p><button class="btn primary" data-a="home">最初の画面へ</button></div>`;
+}
+function renderLobby(){
+  const host=isHost();const r=room;
+  const seats=r.seats.map((x,i)=>{
+    const c=SEATC[i];
+    if(x.kind==='human'){
+      const you=x.uid===myUid,isH=x.uid===r.host;
+      return `<div class="seat filled"><div class="who"><span class="flag" style="--c:${c}"></span><span class="n">${esc(x.name)}</span>${you?'<span class="tag you">あなた</span>':''}${isH?'<span class="tag">ホスト</span>':''}</div>
+        <div class="state">乗船済み</div>${host&&!you?`<div><button class="btn small" data-a="kick" data-i="${i}" ${busy?'disabled':''}>席を空ける</button></div>`:''}</div>`;
+    }
+    if(x.kind==='closed')return `<div class="seat closed"><div class="who"><span class="flag" style="--c:${c}"></span><span class="n">締め切り</span></div><div class="state">この席は使いません</div>${host?`<div><button class="btn small" data-a="seat" data-i="${i}" ${busy?'disabled':''}>席を開ける</button></div>`:''}</div>`;
+    return `<div class="seat"><div class="who"><span class="flag" style="--c:${c}"></span><span class="n">空き</span></div><div class="state">開始時にCPUが入ります</div>${host?`<div><button class="btn small" data-a="seat" data-i="${i}" ${busy?'disabled':''}>締め切る</button></div>`:''}</div>`;
+  }).join('');
+  const nPlay=r.seats.filter(x=>x.kind!=='closed').length;
+  $app.innerHTML=topbar()+`
+  <div class="lobby">
+    <section class="panel"><h2>乗組員の集合</h2><div class="seats">${seats}</div>
+      <p class="note">仲間には同じ合言葉を伝えてください。空いている席は、出航時にCPUの船長が埋めます。</p></section>
+    <section class="panel"><h2>${host?'出航の設定':'出航を待っています'}</h2>
+      <div class="field"><label for="in-target">勝利に必要な金貨</label>
+        <select id="in-target" ${host&&!busy?'':'disabled'}>${targetOptions(TARGETS.includes(r.target)?r.target:DEF_TARGET)}</select></div>
+      ${host?`<button class="btn primary big" data-a="start" ${busy||nPlay<2?'disabled':''}>出航する</button>${nPlay<2?'<p class="note">2隻以上が必要です。</p>':''}`
+        :`<p class="note">ホストが出航するとゲームが始まります。</p>`}
+    </section>
+  </div>`;
+}
+function chestTile(c,{mine,btn,i}={}){
+  let cls='ch',label='?';
+  if(c.king){cls+=' king';label='王10'}
+  else if(mine){cls+=' mine';label=c.v<0?'呪':String(c.v);if(c.v<0)cls+=' curse';if(c.v===0)cls+=' zero'}
+  const title=c.king?'王の宝箱（金貨10）':mine?(c.v<0?'呪いの箱（換金で金貨−2）':`宝箱（金貨${c.v}）`):'中身の見えない宝箱';
+  return btn?`<button class="${cls}" data-a="raidPick" data-i="${i}" title="${title}" aria-label="${title}">${label}</button>`:`<span class="${cls}" title="${title}">${label}</span>`;
+}
+function playerPanel(g,i,me){
+  const p=g.P[i],seat=g.seats[i],c=SEATC[i%4],isMe=i===me,turn=g.turn===i&&g.phase!=='over';
+  const pct=Math.min(100,p.gold/g.target*100);
+  const chests=p.chests.length?p.chests.map(x=>chestTile(x,{mine:isMe})).join(''):`<span class="ch empty">0</span>`;
+  const keep=p.keep?'キープ1枚':'キープなし';
+  return `<div class="pl ${turn?'turn':''}" style="--c:${c}">
+    <div class="head"><span class="flag" style="--c:${c}"></span><span class="n">${esc(seat.name)}</span>${seat.kind==='cpu'?'<span class="tag">CPU</span>':''}${isMe?'<span class="tag you">あなた</span>':''}${turn?'<span class="turnmark">手番</span>':''}</div>
+    <div class="gold"><span class="g">${p.gold}</span><span class="t">/ ${g.target} 金貨</span></div>
+    <div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <div class="chests" aria-label="宝箱${p.chests.length}個">${chests}</div>
+    <div class="meta"><span>宝箱 <b class="num">${p.chests.length}</b>/5</span><span>護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span><span class="keepslot">${keep}</span></div>
+    ${p.skip?'<div class="skipnote">次の番は休み</div>':''}
+    ${isHost()&&seat.kind==='human'&&seat.uid!==myUid&&g.phase!=='over'?`<div><button class="btn small" data-a="toCpu" data-i="${i}" ${busy?'disabled':''}>CPUに交代</button></div>`:''}
+  </div>`;
+}
+function cardHTML(card,{btnFrom,small}={}){
+  if(!card)return '';
+  if(card.t==='h'){const h=HAP[card.k];
+    return `<div class="card h ${h.c} ${small?'small':''}"><div class="kind"><span>ハプニング</span><span>${HAP_LABEL[h.c]}</span></div><div class="title">${h.n}</div><div class="desc">${h.d}</div></div>`}
+  const opts=card.o.map(o=>btnFrom?`<button class="opt" data-a="use" data-from="${btnFrom}" data-opt="${o}" ${busy?'disabled':''}><b>${OPT[o].n}</b><span>${OPT[o].d}</span></button>`
+    :`<div class="opt"><b>${OPT[o].n}</b><span>${OPT[o].d}</span></div>`).join('<div class="ordiv">または</div>');
+  return `<div class="card ${small?'small':''}"><div class="kind"><span>アクション</span><span>1つ選ぶ</span></div>${opts}</div>`;
+}
+function stageHTML(g,me){
+  const actor=g.turn,an=esc(nm(g,actor)),mine=actor===me&&g.phase!=='over'&&!spectator;
+  const p=g.P[actor];const dis=busy?'disabled':'';
+  if(g.phase==='over'){
+    const w=g.winner;
+    return `<div class="winner"><h2>${esc(nm(g,w))}の勝利</h2><p>金貨 <b class="num">${g.P[w].gold}</b> 枚を集めて、霧の果ての海を制した。</p>
+      ${mode==='local'?`<button class="btn primary" data-a="local-again">もう一度遊ぶ</button>`:isHost()?`<button class="btn primary" data-a="backLobby" ${dis}>ルームに戻って次のゲームへ</button>`:`<p class="note">ホストが次のゲームを準備します。</p>`}</div>`;
+  }
+  if(!mine){
+    const W={start:'カードを引こうとしています',choose:'行動を選んでいます',raidTarget:'略奪する相手を選んでいます',raidPick:'略奪する宝箱を選んでいます',ghostTarget:'幽霊船で狙う相手を選んでいます',bet:'賭けるか迷っています',deep:'深海で宝箱を選んでいます',chart:'海図を読んでいます'};
+    let shown='';
+    if(g.cur&&g.cur.t==='h'&&g.phase!=='start')shown=cardHTML(g.cur);
+    else if(g.phase==='choose')shown=`<div class="card back"><div>アクション<br>カード</div></div>`;
+    else if(g.cur&&g.phase==='start')shown=`<div class="cardwrap"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`;
+    const drv=g.seats[actor].kind==='cpu'?'<small>CPUが操船中</small>':'';
+    return `<div class="prompt">${an}の番　${W[g.phase]||'考えています…'}${drv}</div><div class="cards">${shown}</div>`;
+  }
+  switch(g.phase){
+    case 'start':return `<div class="prompt">あなたの番です<small>共通の山札から1枚引きます。</small></div>
+      <div class="choices"><button class="btn primary big" data-a="draw" ${dis}>カードを引く</button></div>
+      <div class="cards">${g.cur?`<div class="cardwrap"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`:''}</div>`;
+    case 'choose':{
+      const sail=g.sub.sail;
+      return `<div class="prompt">${sail?'帆を張って引いたカード。どちらかを使います':'使う行動を選んでください'}<small>${sail?'このカードはキープできません。':p.keep?'キープ中のカードを使うと、引いたカードがキープに入ります。':'キープが空なので、使わずにキープして番を終えることもできます。'}</small></div>
+      <div class="cards"><div class="cardwrap"><span class="cap">引いたカード</span>${cardHTML(g.cur,{btnFrom:'drawn'})}</div>
+      ${!sail&&p.keep?`<div class="cardwrap"><span class="cap">キープ中のカード</span>${cardHTML(p.keep,{btnFrom:'keep'})}</div>`:''}</div>
+      ${!sail&&!p.keep?`<div class="choices"><button class="btn" data-a="keepOnly" ${dis}>使わずにキープして番を終える</button></div>`:''}`;
+    }
+    case 'raidTarget':case 'ghostTarget':{
+      const t=idx(g).filter(i=>i!==actor&&g.P[i].chests.length);
+      return `<div class="prompt">${g.phase==='raidTarget'?'どの船を襲いますか？':'幽霊船をどの船に向かわせますか？'}<small>${g.phase==='raidTarget'?'相手を選んだあと、見えない宝箱から1個を選びます。':'選んだ相手は宝箱を1個（いちばん安いもの）海に捨てます。'}</small></div>
+      <div class="choices">${t.map(i=>`<button class="btn" data-a="${g.phase}" data-t="${i}" ${dis}><span class="flag" style="--c:${SEATC[i]};display:inline-block;vertical-align:-3px;margin-right:6px"></span>${esc(nm(g,i))}（宝箱${g.P[i].chests.length}）</button>`).join('')}</div>
+      ${g.phase==='ghostTarget'?`<div class="cards">${cardHTML(g.cur,{small:true})}</div>`:''}`;
+    }
+    case 'raidPick':{const t=g.sub.t;
+      return `<div class="prompt">${esc(nm(g,t))}の宝箱から1個選ぶ<small>中身は見えません。王の宝箱だけは表向きです。</small></div>
+      <div class="chests">${busy?'':g.P[t].chests.map((c,i)=>chestTile(c,{btn:true,i})).join('')}</div>`;}
+    case 'deep':return `<div class="prompt">深海で見つけた宝箱。1個だけ持ち帰れます</div>
+      <div class="choices">${g.sub.opts.map((c,i)=>`<button class="btn" data-a="deepPick" data-i="${i}" ${dis} style="display:flex;align-items:center;gap:10px">${chestTile(c,{mine:true})}${c.v<0?'呪いの箱':`金貨${c.v}`}</button>`).join('')}</div>`;
+    case 'chart':return `<div class="prompt">海図を読む：山札の上2枚<small>左が次に引かれるカードです（次は ${esc(nm(g,(actor+1)%g.P.length))} の番）。</small></div>
+      <div class="choices"><button class="btn" data-a="chart" data-swap="0" ${dis}>このまま戻す</button><button class="btn primary" data-a="chart" data-swap="1" ${dis}>入れ替えて戻す</button></div>
+      <div class="cards"><div class="cardwrap"><span class="cap">1枚目（次に引かれる）</span>${cardHTML(g.deck[0],{small:true})}</div><div class="cardwrap"><span class="cap">2枚目</span>${cardHTML(g.deck[1],{small:true})}</div></div>`;
+    case 'bet':return `<div class="prompt">賭けの酒場<small>偶数なら金貨+3、奇数なら金貨−2。いまの金貨は ${p.gold} 枚。</small></div>
+      <div class="choices"><button class="btn primary" data-a="bet" data-roll="1" ${dis}>サイコロを振る</button><button class="btn" data-a="bet" data-roll="0" ${dis}>見送る</button></div>
+      <div class="cards">${cardHTML(g.cur,{small:true})}</div>`;
+  }
+  return '';
+}
+function renderGame(g){
+  const me=mySeat(g);
+  const order=me>=0?[...Array(g.P.length)].map((_,k)=>(me+1+k)%g.P.length).filter(i=>i!==me):idx(g);
+  const fresh=g.log.length?g.log[g.log.length-1].n:0;
+  const logs=g.log.map(e=>`<li class="${e.c} ${e.n>lastLogN&&lastLogN?'fresh':''}">${esc(e.t)}</li>`).join('');
+  const keepMine=me>=0&&g.P[me].keep&&!(g.turn===me&&g.phase==='choose')?`<div class="cardwrap"><span class="cap">あなたのキープ</span>${cardHTML(g.P[me].keep,{small:true})}</div>`:'';
+  const ol0=document.querySelector('.log ol');const prevScroll=ol0?ol0.scrollTop:null;
+  $app.innerHTML=`<div class="screen-game">${topbar()}
+  <div class="rotate-hint">スマホは横向きにすると、盤面全体が1画面に収まります。</div>
+  <div class="game">
+    <div class="opps">${order.map(i=>playerPanel(g,i,me)).join('')}</div>
+    <div class="table">
+      <div class="piles">
+        <div class="pile"><div><span class="num">${g.deck.length}</span>山札</div></div>
+        <div class="pilemeta">捨て札 <b class="num">${g.discard.length}</b><br>宝箱の残り <b class="num">${g.bag.length}</b></div>
+      </div>
+      <div class="stage">${stageHTML(g,me)}</div>
+    </div>
+    ${me>=0?`<div class="mine">${playerPanel(g,me,me)}${keepMine}</div>`:''}
+    <aside class="log"><h3>航海日誌</h3><ol>${logs}</ol></aside>
+  </div></div>`;
+  if(prevScroll!==null){const ol=document.querySelector('.log ol');if(ol)ol.scrollTop=prevScroll}
+  lastLogN=fresh;
+}
+
+/* ===== 入力 ===== */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  const d=b.dataset;
+  switch(d.a){
+    case 'enter':enterRoom();break;
+    case 'local':startLocal();break;
+    case 'local-again':L=newGame(L.seats,L.target);lastLogN=0;render();scheduleCpu();break;
+    case 'leave':if(mode==='local'){mode='home';L=null;clearTimeout(cpuTimer);render()}else leaveRoom();break;
+    case 'home':mode='home';roomGone='';render();break;
+    case 'fullscreen':
+      if(document.fullscreenElement){document.exitFullscreen().catch(()=>{}).finally(render)}
+      else{document.documentElement.requestFullscreen().then(()=>{try{screen.orientation.lock('landscape').catch(()=>{})}catch(err){}}).catch(()=>toast('この環境では全画面にできません。')).finally(render)}
+      break;
+    case 'seat':doOp('seat',{i:+d.i});break;
+    case 'kick':doOp('kick',{i:+d.i});break;
+    case 'start':doOp('start');break;
+    case 'backLobby':doOp('backLobby');break;
+    case 'toCpu':doOp('toCpu',{i:+d.i});break;
+    case 'draw':perform({type:'draw'});break;
+    case 'use':perform({type:'use',from:d.from,opt:d.opt});break;
+    case 'keepOnly':perform({type:'keepOnly'});break;
+    case 'raidTarget':perform({type:'raidTarget',t:+d.t});break;
+    case 'ghostTarget':perform({type:'ghostTarget',t:+d.t});break;
+    case 'raidPick':perform({type:'raidPick',i:+d.i});break;
+    case 'deepPick':perform({type:'deepPick',i:+d.i});break;
+    case 'chart':perform({type:'chart',swap:d.swap==='1'});break;
+    case 'bet':perform({type:'bet',roll:d.roll==='1'});break;
+  }
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='in-target'&&isHost())doOp('target',{v:+e.target.value});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&mode==='home'&&(e.target.id==='in-pass'||e.target.id==='in-name')&&online==='ok'){e.preventDefault();enterRoom()}
+});
+document.addEventListener('fullscreenchange',()=>{if(mode!=='home')render()});
+
+/* ---- 起動：claude.ai なら共有データ、それ以外（GitHub Pages など）なら直接接続 ---- */
+(async()=>{
+  render();
+  const inClaude=!!(window.claude&&window.claude.use);
+  if(inClaude){
+    const [d,u]=await Promise.all([claude.use('db'),claude.use('user')]);
+    if(!d||!u){online='unavailable';render();return}
+    myUid=await u.id();
+    const cw=await u.can('data.write');
+    online=!myUid?'noid':(cw===false?'readonly':'ok');
+    if(online==='ok')net=DbNet(d,myUid);
+  }else{
+    myUid=ssGet('kiri-uid');if(!myUid){myUid='p'+Math.random().toString(36).slice(2,12);ssSet('kiri-uid',myUid)}
+    net=PeerNet(myUid);online='ok';
+  }
+  render();
+})();
+</script>
+
+</body>
+</html>
