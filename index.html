@@ -407,7 +407,6 @@ const OPT={
 };
 const HAP={
   wreck:{n:'沈没船の発見',c:'good',d:'宝箱を2個得る'},
-  tailwind:{n:'追い風',c:'good',d:'もう一度自分の番を行う'},
   dolphins:{n:'イルカの群れ',c:'good',d:'金貨が最も少ない人が宝箱を2個得る'},
   mermaid:{n:'人魚の歌',c:'good',d:'全員、風の護符を1枚得る'},
   storm:{n:'大嵐',c:'bad',d:'全員、宝箱を1個海に捨てる（護符で防げる）'},
@@ -450,7 +449,7 @@ const ACTION_SET=[
   [['sail','recruit','stormsea','cash','raid'],4],
   [['chart','sail','repair','sell','cash'],1]
 ];
-const HAP_SET=[['wreck',3],['tailwind',2],['dolphins',2],['mermaid',2],['storm',2],['whirlpool',2],['monster',2],['calm',2],['ghost',2],['smuggler',1],['tavern',2],['island',1],['crewUp',3],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
+const HAP_SET=[['wreck',3],['dolphins',3],['mermaid',3],['storm',2],['whirlpool',2],['monster',2],['calm',2],['ghost',2],['smuggler',1],['tavern',2],['island',1],['crewUp',3],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
 const CHEST_SET=[[1,9],[2,9],[3,7],[5,4],[-2,1]];
 const CAP=5, MAXCH=2, MAXCREW=4;
 const CPU_NAMES=['カモメ号','黒潮丸','サンゴ号','北風丸'];
@@ -519,7 +518,6 @@ function resolveHap(s,card){
   const done=()=>{s.discard.push(card);endTurn(s)};
   switch(card.k){
     case 'wreck':{let g=0;for(let i=0;i<2;i++){const c=fromBag(s);if(c){giveChest(s,me,c);g++}}log(s,`${nm(s,me)}は宝箱を${g}個引き上げた。`);return done()}
-    case 'tailwind':s.extra=true;return done();
     case 'dolphins':{const ids=minGold(s);ids.forEach(i=>{for(let k=0;k<2;k++){const c=fromBag(s);if(c)giveChest(s,i,c)}});log(s,`${ids.map(i=>nm(s,i)).join('、')}が宝箱を2個得た。`,'good');return done()}
     case 'mermaid':s.P.forEach(p=>p.charms=Math.min(MAXCH,p.charms+1));log(s,'全員が風の護符を1枚得た（最大2枚）。','good');return done();
     case 'storm':{let any=false;s.P.forEach((p,i)=>{if(p.chests.length){any=true;if(safe(s,i)){anchorLog(s,i);return}if(guard(s,i)){loseLowest(s,i,1);log(s,`${nm(s,i)}は宝箱を1個失った。`,'bad')}}});if(!any)log(s,'誰も宝箱を積んでいなかった。','sys');return done()}
