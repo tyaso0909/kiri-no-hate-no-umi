@@ -176,6 +176,7 @@ button.opt:hover:not(:disabled){background:#fbe6b0;transform:translateY(-1px)}
 .opt.locked b{font-size:14px;color:#6b7b85}
 .opt.locked .need{margin-left:auto;font-size:10px;color:#6b7b85;white-space:nowrap}
 .crew{display:inline-flex;gap:1px;vertical-align:-4px}
+.awaytag{font-size:10px;font-weight:700;color:var(--cash);border:1px dashed var(--cash);border-radius:4px;padding:0 5px;white-space:nowrap}
 .anchortag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:#2f6fb2;border-radius:4px;padding:1px 6px;flex:none;white-space:nowrap}
 .card.back{background:repeating-linear-gradient(45deg,var(--back) 0 8px,var(--back-2) 8px 16px);border-color:var(--back-2);color:#e8eef0;min-height:150px;place-items:center;text-align:center;font-family:var(--f-display)}
 .card.small{width:170px}
@@ -247,8 +248,10 @@ html.land .gold .g{font-size:17px}
 html.land .gold .t{font-size:10px}
 html.land .chests{min-height:0;gap:2px}
 html.land .pl .chests:has(.none){display:none}
-html.land .chests svg{width:18px;height:18px}
-html.land .chests svg.king{width:26px}
+html.land .pl .chests svg{width:18px;height:18px}
+html.land .stage .chests svg{width:36px;height:36px}
+html.land .pl .chests svg.king{width:26px}
+html.land .stage .chests svg.king{width:52px}
 html.land .meta{font-size:10px;gap:0 8px}
 html.land .piles{padding-top:2px;gap:2px}
 html.land .pile svg{width:46px}
@@ -381,6 +384,9 @@ const OPT={
   chart:{n:'海図を読む',d:'山札の上2枚を見て、並べ替える'},
   repair:{n:'修理',d:'風の護符を1枚得る（最大2）'},
   anchor:{n:'錨を下ろす',d:'次の自分の番まで、宝箱を奪われない・失わない'},
+  stormsea:{n:'嵐の海域へ',d:'宝箱を1個ずつ引き上げる。続けるとサイコロ、1で全部失う（最大3個）'},
+  sell:{n:'闇の買い取り',d:'伏せて混ぜた自分の宝箱から1つ選び、金貨2枚で売る'},
+  dispatch:{n:'船員の出稼ぎ',d:'船員1人が出稼ぎへ。自分の番3回後に金貨2枚を持って戻る'},
   recruit:{n:'船員募集',d:'船員を1人増やす（金貨3で確実、無料なら50%）'}
 };
 const HAP={
@@ -398,20 +404,23 @@ const HAP={
   island:{n:'伝説の島',c:'trick',d:'王の宝箱（金貨10）を得る。表向きで、換金するまで奪われうる'},
   crewUp:{n:'新しい仲間',c:'good',d:'港で出会った船乗りが仲間になる。船員+1（最大4人）'},
   crewDown:{n:'船員の離脱',c:'bad',d:'船員が1人、船を降りる（護符で防げる）'},
-  scout:{n:'船員の引き抜き',c:'trick',d:'好きな相手1人から船員を1人引き抜く（自分+1、相手−1）'}
+  scout:{n:'船員の引き抜き',c:'trick',d:'好きな相手1人から船員を1人引き抜く（自分+1、相手−1）'},
+  toll:{n:'海賊の通行料',c:'trick',d:'金貨2枚を払う／宝箱を1個差し出す／戦う（サイコロ：偶数で宝箱+1、奇数で宝箱−2）から選ぶ'},
+  castaway:{n:'漂流者',c:'trick',d:'助ける（船員+1、食料として宝箱を1個失う）か、見捨てるかを選ぶ'}
 };
 const HAP_LABEL={good:'良いこと',bad:'悪いこと',trick:'駆け引き'};
 /* アクションカードには行動が上から5つ並ぶ。使えるのは上から「船員の数＋1」個まで */
 const ACTION_SET=[
-  [['sail','cash','recruit','deep','raid'],8],
+  [['sail','cash','recruit','stormsea','raid'],8],
   [['sail','raid','repair','cash','recruit'],8],
   [['recruit','repair','sail','cash','chart'],7],
   [['deep','chart','recruit','cash','anchor'],6],
-  [['chart','raid','sail','cash','repair'],6],
-  [['anchor','repair','raid','sail','cash'],6],
-  [['cash','raid','deep','recruit','sail'],4]
+  [['chart','raid','sell','cash','repair'],6],
+  [['anchor','repair','raid','dispatch','cash'],6],
+  [['cash','raid','deep','recruit','sail'],4],
+  [['stormsea','sell','dispatch','sail','cash'],5]
 ];
-const HAP_SET=[['wreck',2],['tailwind',1],['dolphins',1],['mermaid',1],['storm',2],['whirlpool',1],['monster',2],['calm',1],['ghost',1],['smuggler',1],['tavern',1],['island',1],['crewUp',2],['crewDown',2],['scout',2]];
+const HAP_SET=[['wreck',2],['tailwind',1],['dolphins',1],['mermaid',1],['storm',2],['whirlpool',1],['monster',2],['calm',1],['ghost',1],['smuggler',1],['tavern',1],['island',1],['crewUp',2],['crewDown',2],['scout',2],['toll',2],['castaway',2]];
 const CHEST_SET=[[1,9],[2,9],[3,7],[5,4],[-2,1]];
 const CAP=5, MAXCH=2, MAXCREW=4;
 const CPU_NAMES=['カモメ号','黒潮丸','サンゴ号','北風丸'];
@@ -434,6 +443,10 @@ function newGame(players,target){
   return s;
 }
 function crewOf(p){return p.crew??1}
+/* 出稼ぎ中も含めた船員の合計（最大4人の判定に使う） */
+function crewTotal(p){return crewOf(p)+(p.away?p.away.length:0)}
+/* サイコロの結果を日誌に書く（演出用の情報も付ける） */
+function logDice(s,i,v,title,head,res,c){log(s,`サイコロは${v}。${nm(s,i)}は${res}`,c);s.log[s.log.length-1].dice={v,i,title,head,res}}
 /* 錨を下ろした船は、次の自分の番まで宝箱を奪われない・失わない */
 function safe(s,i){return !!s.P[i].anchor}
 function anchorLog(s,i){log(s,`${nm(s,i)}は錨を下ろしていて無事だった。`,'good')}
@@ -492,9 +505,11 @@ function resolveHap(s,card){
       return done();
     }
     case 'tavern':s.phase='bet';s.sub={};return;
-    case 'crewUp':{const p=s.P[me];if(crewOf(p)<MAXCREW){p.crew=crewOf(p)+1;log(s,`${nm(s,me)}の船に新しい船員が加わった（${p.crew}人）。`,'good')}else log(s,'船員はもう満員だ。','sys');return done()}
+    case 'toll':s.phase='toll';s.sub={};return;
+    case 'castaway':s.phase='castaway';s.sub={};return;
+    case 'crewUp':{const p=s.P[me];if(crewTotal(p)<MAXCREW){p.crew=crewOf(p)+1;log(s,`${nm(s,me)}の船に新しい船員が加わった（${p.crew}人）。`,'good')}else log(s,'船員はもう満員だ。','sys');return done()}
     case 'crewDown':{const p=s.P[me];if(crewOf(p)>0){if(guard(s,me)){p.crew=crewOf(p)-1;log(s,`${nm(s,me)}の船員が1人、船を降りた（${p.crew}人）。`,'bad')}}else log(s,'降りる船員がいなかった。','sys');return done()}
-    case 'scout':{if(crewOf(s.P[me])>=MAXCREW){log(s,`${nm(s,me)}の船員はもう満員で、引き抜けなかった。`,'sys');return done()}
+    case 'scout':{if(crewTotal(s.P[me])>=MAXCREW){log(s,`${nm(s,me)}の船員はもう満員で、引き抜けなかった。`,'sys');return done()}
       const t=idx(s).filter(i=>i!==me&&crewOf(s.P[i])>0);if(!t.length){log(s,'引き抜ける船員がいなかった。','sys');return done()}
       s.phase='scoutTarget';s.sub={};return}
     case 'island':s.island=true;giveChest(s,me,{id:'king',v:10,king:true});log(s,`${nm(s,me)}が伝説の島で王の宝箱（金貨10）を手に入れた！`,'trick');endTurn(s);return;
@@ -505,13 +520,22 @@ function checkWin(s){
   if(w.length){w.sort((a,b)=>s.P[b].gold-s.P[a].gold);s.winner=w[0];s.phase='over';log(s,`${nm(s,w[0])}が金貨${s.P[w[0]].gold}枚を集めて勝利！`,'win');return true}
   return false;
 }
+/* 自分の番が来たとき：錨を上げ、出稼ぎの船員を数える */
+function tickTurn(s,n){
+  const p=s.P[n];p.anchor=false;
+  if(p.away&&p.away.length){
+    p.away=p.away.map(x=>x-1);const back=p.away.filter(x=>x<=0).length;p.away=p.away.filter(x=>x>0);
+    if(back){p.crew=Math.min(MAXCREW,crewOf(p)+back);p.gold+=2*back;log(s,`${nm(s,n)}の出稼ぎ船員が金貨${2*back}枚を持って戻った（船員${p.crew}人）。`,'good')}
+  }
+}
 function endTurn(s){
   s.sub={};
   if(checkWin(s))return;
-  if(s.extra){s.extra=false;s.P[s.turn].anchor=false;s.phase='start';log(s,`追い風！ ${nm(s,s.turn)}がもう一度行動する。`,'good');return}
+  if(s.extra){s.extra=false;s.phase='start';log(s,`追い風！ ${nm(s,s.turn)}がもう一度行動する。`,'good');tickTurn(s,s.turn);checkWin(s);return}
   let n=s.turn;
-  for(let g=0;g<s.P.length*2;g++){n=(n+1)%s.P.length;s.P[n].anchor=false;if(s.P[n].skip){s.P[n].skip=false;log(s,`${nm(s,n)}は無風で1回休み。`,'sys');continue}break}
+  for(let g=0;g<s.P.length*2;g++){n=(n+1)%s.P.length;tickTurn(s,n);if(s.P[n].skip){s.P[n].skip=false;log(s,`${nm(s,n)}は無風で1回休み。`,'sys');continue}break}
   s.turn=n;s.phase='start';s.turnNo++;
+  checkWin(s);
 }
 function doOpt(s,opt){
   const me=s.turn,p=s.P[me];
@@ -523,8 +547,15 @@ function doOpt(s,opt){
       if(p.gold<before)log(s,'呪いの箱が混じっていた！','bad');endTurn(s);return true}
     case 'raid':{const t=idx(s).filter(i=>i!==me&&s.P[i].chests.length&&!safe(s,i));if(!t.length){log(s,`${nm(s,me)}：略奪に出たが、狙える船がいなかった。`,'sys');endTurn(s);return true}s.phase='raidTarget';s.sub={};log(s,`${nm(s,me)}：略奪に向かう。`);return true}
     case 'chart':ensureDeck(s,2);if(s.deck.length<2){log(s,'山札が少なすぎて海図が読めない。','sys');endTurn(s);return true}s.phase='chart';s.sub={};return true;
-    case 'recruit':if(crewOf(p)>=MAXCREW){log(s,`${nm(s,me)}：船員はもう満員だ（${MAXCREW}人）。`,'sys');endTurn(s);return true}s.phase='recruit';s.sub={};log(s,`${nm(s,me)}：船員を募集する。`);return true;
+    case 'recruit':if(crewTotal(p)>=MAXCREW){log(s,`${nm(s,me)}：船員はもう満員だ（${MAXCREW}人）。`,'sys');endTurn(s);return true}s.phase='recruit';s.sub={};log(s,`${nm(s,me)}：船員を募集する。`);return true;
     case 'repair':p.charms=Math.min(MAXCH,p.charms+1);log(s,`${nm(s,me)}：修理して風の護符を得た（${p.charms}枚）。`);endTurn(s);return true;
+    case 'stormsea':{const c=fromBag(s);if(!c){log(s,'宝箱がもう残っていない。','sys');endTurn(s);return true}
+      s.sub={got:[c]};s.phase='stormsea';log(s,`${nm(s,me)}：嵐の海域へ漕ぎ出し、宝箱を1個引き上げた。`);return true}
+    case 'sell':{const ids=p.chests.map((c,i)=>i).filter(i=>!p.chests[i].king);
+      if(!ids.length){log(s,`${nm(s,me)}：闇の買い取りに出せる宝箱がなかった。`,'sys');endTurn(s);return true}
+      s.sub={order:shuffle(ids.map(i=>p.chests[i].id))};s.phase='sell';log(s,`${nm(s,me)}：宝箱を伏せて混ぜ、闇の買い取りに出す。`);return true}
+    case 'dispatch':{if(crewOf(p)<1){log(s,`${nm(s,me)}：出稼ぎに出せる船員がいなかった。`,'sys');endTurn(s);return true}
+      p.crew=crewOf(p)-1;p.away=(p.away||[]).concat(3);log(s,`${nm(s,me)}：船員を1人出稼ぎに出した。自分の番3回後に戻る（船員${p.crew}人）。`);endTurn(s);return true}
     case 'anchor':p.anchor=true;log(s,`${nm(s,me)}：錨を下ろした。次の番まで宝箱は守られる。`,'good');endTurn(s);return true;
   }
   return false;
@@ -547,8 +578,8 @@ function act(s,a){
     case 'bet':{if(s.phase!=='bet')return false;s.discard.push(s.cur);
       if(!a.roll){log(s,`${nm(s,me)}は賭けを見送った。`,'sys');endTurn(s);return true}
       const d=1+Math.floor(Math.random()*6);s.dice=d;
-      if(d%2===0){p.gold+=3;log(s,`サイコロは${d}。${nm(s,me)}は金貨+3（計${p.gold}）。`,'good')}
-      else{p.gold=Math.max(0,p.gold-2);log(s,`サイコロは${d}。${nm(s,me)}は金貨−2（計${p.gold}）。`,'bad')}
+      if(d%2===0){p.gold+=3;logDice(s,me,d,'賭けの酒場','偶数！',`金貨+3（計${p.gold}）。`,'good')}
+      else{p.gold=Math.max(0,p.gold-2);logDice(s,me,d,'賭けの酒場','奇数……',`金貨−2（計${p.gold}）。`,'bad')}
       endTurn(s);return true}
     case 'deepPick':{if(s.phase!=='deep')return false;const o=s.sub.opts;const c=o[a.i];if(!c)return false;o.forEach((x,i)=>{if(i!==a.i)toBag(s,x)});
       giveChest(s,me,c);log(s,`${nm(s,me)}は深海から宝箱を1個引き上げた。`);endTurn(s);return true}
@@ -556,6 +587,34 @@ function act(s,a){
       if(a.pay){p.gold-=3;p.crew++;log(s,`${nm(s,me)}は金貨3枚で腕のいい船員を雇った（船員${p.crew}人）。`,'good')}
       else if(Math.random()<0.5){p.crew++;log(s,`${nm(s,me)}の呼びかけに船乗りが応えた（船員${p.crew}人）。`,'good')}
       else log(s,`${nm(s,me)}の呼びかけに、誰も応えなかった。`,'sys');
+      endTurn(s);return true}
+    case 'storm':{if(s.phase!=='stormsea')return false;const got=s.sub.got;
+      if(!a.cont||got.length>=3){got.forEach(c=>giveChest(s,me,c));log(s,`${nm(s,me)}は嵐の海域から宝箱を${got.length}個持ち帰った。`,'good');endTurn(s);return true}
+      const d=1+Math.floor(Math.random()*6);
+      if(d===1){got.forEach(c=>toBag(s,c));logDice(s,me,d,'嵐の海域','嵐に呑まれた！',`嵐に呑まれ、引き上げた宝箱${got.length}個を失った。`,'bad');endTurn(s);return true}
+      const c=fromBag(s);
+      if(!c){got.forEach(x=>giveChest(s,me,x));log(s,`宝箱が尽きたので、${got.length}個を持ち帰った。`,'sys');endTurn(s);return true}
+      got.push(c);logDice(s,me,d,'嵐の海域','嵐を乗り切った！',`宝箱をもう1個引き上げた（${got.length}個目）。`,'good');
+      if(got.length>=3){got.forEach(x=>giveChest(s,me,x));log(s,`${nm(s,me)}は嵐の海域から宝箱を3個持ち帰った。`,'good');endTurn(s)}
+      return true}
+    case 'sell':{if(s.phase!=='sell')return false;const id=s.sub.order[a.i];if(id==null)return false;const k=p.chests.findIndex(c=>c.id===id);if(k<0)return false;
+      const c=p.chests.splice(k,1)[0];toBag(s,c);p.gold+=2;
+      log(s,`${nm(s,me)}は闇の買い取りで宝箱を金貨2枚で売った（中身は${c.v<0?'呪いの箱':'金貨'+c.v}だった）。`,c.v<2?'good':(c.v>2?'bad':'cash'));endTurn(s);return true}
+    case 'toll':{if(s.phase!=='toll')return false;
+      if(a.how==='pay'){if(p.gold<2)return false;p.gold-=2;log(s,`${nm(s,me)}は海賊に金貨2枚を払った。`,'bad');s.discard.push(s.cur);endTurn(s);return true}
+      if(a.how==='give'){if(!p.chests.some(c=>!c.king)&&!p.chests.length)return false;s.phase='tollGive';return true}
+      if(a.how==='fight'){const d=1+Math.floor(Math.random()*6);s.discard.push(s.cur);
+        if(d%2===0){const c=fromBag(s);if(c)giveChest(s,me,c);logDice(s,me,d,'海賊との戦い','勝利！','海賊を追い払い、宝箱を1個奪い取った。','good')}
+        else{const lost=[];for(let k=0;k<2&&p.chests.length;k++){const c=p.chests.splice(Math.floor(Math.random()*p.chests.length),1)[0];if(c.king)log(s,'王の宝箱が海賊に奪われた……','bad');toBag(s,c);lost.push(c)}
+          logDice(s,me,d,'海賊との戦い','敗北……',`海賊に敗れ、宝箱を${lost.length}個奪われた。`,'bad')}
+        endTurn(s);return true}
+      return false}
+    case 'tollGive':{if(s.phase!=='tollGive')return false;const c=p.chests[a.i];if(!c)return false;p.chests.splice(a.i,1);toBag(s,c);
+      log(s,c.king?`${nm(s,me)}は海賊に王の宝箱を差し出した……`:`${nm(s,me)}は海賊に宝箱を1個差し出した。`,'bad');s.discard.push(s.cur);endTurn(s);return true}
+    case 'castaway':{if(s.phase!=='castaway')return false;s.discard.push(s.cur);
+      if(a.rescue){if(crewTotal(p)>=MAXCREW)return false;p.crew=crewOf(p)+1;const l=loseLowest(s,me,1);
+        log(s,`${nm(s,me)}は漂流者を助けた。新しい船員になった（${p.crew}人）${l?'。食料として宝箱を1個失った':''}。`,'good')}
+      else log(s,`${nm(s,me)}は漂流者を見捨てた。`,'sys');
       endTurn(s);return true}
     case 'chart':if(s.phase!=='chart')return false;if(a.swap){[s.deck[0],s.deck[1]]=[s.deck[1],s.deck[0]]}log(s,`${nm(s,me)}は海図を読んで、山札の上を整えた。`);endTurn(s);return true;
   }
@@ -579,7 +638,10 @@ function cpuChoose(s){
           case 'repair':v=p.charms===0?2.2:p.charms===1?1.3:-0.5;break;
           case 'chart':v=1.2;break;
           case 'anchor':v=p.chests.some(c=>c.king)?4:p.chests.length>=3?1.4+val*0.2:0.3;break;
-          case 'recruit':{const cr=crewOf(p);v=cr>=MAXCREW?-1:cr<=1?3.0:cr===2?2.3:1.5;break}
+          case 'stormsea':v=full?0.2:3.1;break;
+          case 'sell':{const cs=p.chests.filter(c=>!c.king);v=cs.length?1.0+(2-cs.reduce((a,c)=>a+c.v,0)/cs.length)*1.2:-1;break}
+          case 'dispatch':{const cr=crewOf(p);v=cr>=3?2.8:cr===2?2.2:cr===1?0.9:-1;break}
+          case 'recruit':{const cr=crewTotal(p);v=cr>=MAXCREW?-1:cr<=1?3.0:cr===2?2.3:1.5;break}
         }
         return v+Math.random()*0.4;};
       const c=[];
@@ -589,6 +651,13 @@ function cpuChoose(s){
     case 'raidTarget':{const t=opps.filter(i=>s.P[i].chests.length&&!safe(s,i));const k=t.find(i=>s.P[i].chests.some(c=>c.king));return {type:'raidTarget',t:k!==undefined?k:pickBy(t,i=>s.P[i].chests.length*2+s.P[i].gold*0.3)}}
     case 'raidPick':{const ch=s.P[s.sub.t].chests;const k=ch.findIndex(c=>c.king);return {type:'raidPick',i:k>=0?k:Math.floor(Math.random()*ch.length)}}
     case 'ghostTarget':{const t=opps.filter(i=>s.P[i].chests.length&&!safe(s,i));return {type:'ghostTarget',t:pickBy(t,threat)}}
+    case 'stormsea':{const n=s.sub.got.length;return {type:'storm',cont:n<3&&(n<2||Math.random()<0.45)}}
+    case 'sell':return {type:'sell',i:Math.floor(Math.random()*s.sub.order.length)};
+    case 'toll':{const low=p.chests.filter(c=>!c.king).sort((a,b)=>a.v-b.v)[0];
+      if(low&&low.v<=1)return {type:'toll',how:'give'};if(p.gold>=2&&p.gold+2<s.target)return {type:'toll',how:'pay'};if(low)return {type:'toll',how:'give'};return {type:'toll',how:'fight'}}
+    case 'tollGive':{let bi=-1;p.chests.forEach((c,i)=>{if(!c.king&&(bi<0||c.v<p.chests[bi].v))bi=i});return {type:'tollGive',i:bi<0?0:bi}}
+    case 'castaway':{const low=p.chests.filter(c=>!c.king).sort((a,b)=>a.v-b.v)[0];
+      return {type:'castaway',rescue:crewTotal(p)<MAXCREW&&(!p.chests.length||crewOf(p)<=1||(low&&low.v<=2))}}
     case 'scoutTarget':{const t=opps.filter(i=>crewOf(s.P[i])>0);return {type:'scoutTarget',t:pickBy(t,i=>crewOf(s.P[i])*10+threat(i))}}
     case 'bet':return {type:'bet',roll:p.gold+3>=s.target||p.gold<=1||Math.random()<0.5};
     case 'recruit':return {type:'recruit',pay:p.gold>=3&&(p.gold>=8||crewOf(p)<=1)};
@@ -1029,13 +1098,16 @@ function renderHome(){
       ${compass}
       <h1>霧の果ての海</h1>
       <p class="sub">百年に一度、霧が晴れる。四人の船長が同じ海へ漕ぎ出し、宝箱を積んでは港へ戻る。積むほど稼げて、積むほど狙われる。</p>
-      <div class="facts"><span>プレイ人数 <b>1–4</b></span><span>勝利条件 金貨 <b>20/30/40</b> 枚</span><span>山札 <b>66</b> 枚</span><span>宝箱 <b>30</b> 個</span></div>
+      <div class="facts"><span>プレイ人数 <b>1–4</b></span><span>勝利条件 金貨 <b>20/30/40</b> 枚</span><span>山札 <b>75</b> 枚</span><span>宝箱 <b>30</b> 個</span></div>
       <details class="rules"><summary>ルール早見</summary>
         <ul>
           <li>自分の番に共通の山札から1枚引く。</li>
           <li>アクションカードには行動が5つ並ぶ。使えるのは上から「船員の数＋1」個まで。船員は最初1人（最大4人）。</li>
           <li>船員募集：金貨3枚を払えば必ず1人増える。払わなければ50%で増える。</li>
           <li>錨を下ろす：次の自分の番まで、略奪・幽霊船・大嵐・海の怪物から宝箱を守る。</li>
+          <li>嵐の海域へ：宝箱を1個引き上げ、続けるたびにサイコロ。1が出たら引き上げた分を全部失う（最大3個）。</li>
+          <li>闇の買い取り：自分の宝箱を伏せて混ぜ、1つ選んで金貨2枚で売る。</li>
+          <li>船員の出稼ぎ：船員1人が出かけ、自分の番3回後に金貨2枚を持って戻る。</li>
           <li>ハプニングはすぐに解決。悪いことは風の護符1枚で防げる（自動で使われる）。</li>
           <li>宝箱の中身は自分にしか見えない。港で換金して初めて金貨になる。船に積めるのは5個まで。</li>
           <li>金貨を目標枚数集めた船長がその場で勝利。</li>
@@ -1106,7 +1178,10 @@ const OPT_ICON={
   chart:'<rect x="3" y="3" width="20" height="14" rx="1" fill="#efe4c8" stroke="#1d2f3a"/><path d="M6 13 Q 11 6 15 10 T 21 6" stroke="#b5432d" stroke-dasharray="2 2" fill="none"/><path d="M17 12 l2 2 m0 -2 l-2 2" stroke="#1d2f3a"/>',
   repair:'<path d="M5 17 L15 7" stroke="#6b4a1c" stroke-width="2.6"/><path d="M13 3 H21 V9 H13Z" fill="#4b5f6b" stroke="#1d2f3a"/><circle cx="21" cy="16" r="3.5" fill="none" stroke="#1d6f5f" stroke-width="1.8"/>',
   recruit:'<circle cx="10" cy="6" r="4" fill="#e9c9a0" stroke="#4a2f12"/><path d="M5.5 5 Q 10 0.5 14.5 5Z" fill="#1d2f3a"/><path d="M3 19 Q 10 9 17 19Z" fill="#2f6fb2"/><path d="M21 5 V13 M17 9 H25" stroke="#1d6f5f" stroke-width="2"/>',
-  anchor:'<circle cx="13" cy="3.5" r="2.2" fill="none" stroke="#1d2f3a" stroke-width="1.5"/><path d="M13 6 V18 M9 9 H17" stroke="#1d2f3a" stroke-width="1.8"/><path d="M5 13 Q 6 18.5 13 18.5 Q 20 18.5 21 13" fill="none" stroke="#1d2f3a" stroke-width="1.8"/><path d="M3 14 L5 12 L7 14 M19 14 L21 12 L23 14" fill="none" stroke="#1d2f3a" stroke-width="1.5"/>'
+  anchor:'<circle cx="13" cy="3.5" r="2.2" fill="none" stroke="#1d2f3a" stroke-width="1.5"/><path d="M13 6 V18 M9 9 H17" stroke="#1d2f3a" stroke-width="1.8"/><path d="M5 13 Q 6 18.5 13 18.5 Q 20 18.5 21 13" fill="none" stroke="#1d2f3a" stroke-width="1.8"/><path d="M3 14 L5 12 L7 14 M19 14 L21 12 L23 14" fill="none" stroke="#1d2f3a" stroke-width="1.5"/>',
+  stormsea:'<path d="M3 9 Q 6 3 11 5 Q 14 1 19 3 Q 24 4 23 9Z" fill="#7d8b93" stroke="#1d2f3a"/><path d="M13 9 L10 14 H14 L11 19" stroke="#e0ad3a" stroke-width="1.8" fill="none"/><path d="M1 17 Q 5 14 9 17" stroke="#2f6fb2" stroke-width="1.6" fill="none"/><path d="M16 17 Q 20 14 25 17" stroke="#2f6fb2" stroke-width="1.6" fill="none"/>',
+  sell:'<path d="M2 9 C 2 3, 16 3, 16 9Z" fill="#9a6a2b" stroke="#4a2f12"/><rect x="2" y="9" width="14" height="9" rx="1" fill="#7d5322" stroke="#4a2f12"/><text x="9" y="16.5" font-size="7" text-anchor="middle" fill="#fff4dc" font-weight="700">?</text><path d="M17 11 H21" stroke="#1d2f3a" stroke-width="1.4"/><path d="M19.5 9 L21.5 11 L19.5 13" fill="none" stroke="#1d2f3a" stroke-width="1.4"/><circle cx="23" cy="11" r="2.6" fill="#e0ad3a" stroke="#5a3d06"/>',
+  dispatch:'<circle cx="8" cy="5.5" r="3.4" fill="#e9c9a0" stroke="#4a2f12"/><path d="M4.3 4.4 Q 8 0.5 11.7 4.4Z" fill="#1d2f3a"/><path d="M2 19 Q 8 9 14 19Z" fill="#2f6fb2"/><path d="M16 10 H24 M21 7 L24 10 L21 13" fill="none" stroke="#b5432d" stroke-width="1.8"/><circle cx="21" cy="17" r="2.4" fill="#e0ad3a" stroke="#5a3d06"/>'
 };
 const optIcon=o=>`<svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true">${OPT_ICON[o]||''}</svg>`;
 const HAP_ICON={
@@ -1178,6 +1253,7 @@ function routeHTML(g,me){
 const sailor=(on,c)=>`<svg width="14" height="17" viewBox="0 0 14 17" aria-hidden="true">${on?`<path d="M1.5 17 Q 7 9.5 12.5 17Z" style="fill:${c}"/><circle cx="7" cy="7" r="3.6" fill="#e9c9a0" stroke="#4a2f12" stroke-width=".8"/><path d="M2.6 5.6 Q 7 1 11.4 5.6Z" style="fill:var(--ink)"/>`:`<circle cx="7" cy="7" r="3.6" fill="none" style="stroke:var(--muted)" stroke-dasharray="1.5 1.5"/><path d="M1.5 17 Q 7 9.5 12.5 17" fill="none" style="stroke:var(--muted)" stroke-dasharray="1.5 1.5"/>`}</svg>`;
 const crewRow=(n,c)=>`<span class="crew" title="船員${n}人（最大4人）">${[0,1,2,3].map(k=>sailor(k<n,c)).join('')}</span>`;
 const ANCHOR_TAG='<span class="anchortag" title="錨を下ろしている：次の番まで宝箱は守られる"><svg width="12" height="14" viewBox="0 0 26 20" aria-hidden="true"><circle cx="13" cy="3.5" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 6 V18 M9 9 H17" stroke="currentColor" stroke-width="2.4"/><path d="M5 13 Q 6 18.5 13 18.5 Q 20 18.5 21 13" fill="none" stroke="currentColor" stroke-width="2.4"/></svg><span class="at">停泊中</span></span>';
+const awayTag=p=>p.away&&p.away.length?`<span class="awaytag" title="出稼ぎ中の船員">出稼ぎ ${p.away.map(x=>'あと'+x).join('・')}</span>`:'';
 /* ===== 画面の部品 ===== */
 function playerPanel(g,i,me){
   const p=g.P[i],seat=g.seats[i],c=SEATC[i%4],turn=g.turn===i&&g.phase!=='over';
@@ -1186,7 +1262,7 @@ function playerPanel(g,i,me){
     <div class="head">${pennant(c)}<span class="n">${esc(seat.name)}</span>${seat.kind==='cpu'?'<span class="tag">CPU</span>':''}${p.anchor?ANCHOR_TAG:''}${turn?'<span class="turnmark">手番</span>':''}</div>
     <div class="gold"><span class="g">${p.gold}</span><span class="t">/ ${g.target} 金貨</span>${deltaHTML(i)}</div>
     <div class="chests" aria-label="宝箱${p.chests.length}個">${chests}</div>
-    <div class="meta"><span>宝箱 <b class="num">${p.chests.length}</b>/5</span><span>護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span><span>船員 ${crewRow(crewOf(p),c)}</span></div>
+    <div class="meta"><span>宝箱 <b class="num">${p.chests.length}</b>/5</span><span>護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span><span>船員 ${crewRow(crewOf(p),c)}</span>${awayTag(p)}</div>
     ${p.skip?'<div class="skipnote">次の番は休み</div>':''}
     ${isHost()&&seat.kind==='human'&&seat.uid!==myUid&&g.phase!=='over'?`<div><button class="btn small" data-a="toCpu" data-i="${i}" ${busy?'disabled':''}>CPUに交代</button></div>`:''}
   </div>`;
@@ -1197,7 +1273,7 @@ function holdPanel(g,me){
     <div class="me">
       <div style="display:flex;align-items:center;gap:8px">${pennant(SEATC[me%4])}<b style="font-size:16px">${esc(nm(g,me))}</b><span class="tag you">あなた</span>${p.anchor?ANCHOR_TAG:''}${turn?'<span class="turnmark" style="margin-left:4px">手番</span>':''}</div>
       <div class="gold"><span class="g">${p.gold}</span><span class="t">/ ${g.target} 金貨</span>${deltaHTML(me)}</div>
-      <div class="meta"><span>船員 ${crewRow(crewOf(p),SEATC[me%4])}</span></div>
+      <div class="meta"><span>船員 ${crewRow(crewOf(p),SEATC[me%4])}</span>${awayTag(p)}</div>
       <div class="meta"><span>風の護符 ${[0,1].map(k=>`<i class="charm ${k<p.charms?'on':''}"></i>`).join('')}</span>${p.skip?'<span class="skipnote">次の番は休み</span>':''}</div>
     </div>
     <div class="bay"><div class="lab">船倉　宝箱 ${p.chests.length} / 5</div>${holdSvg(p.chests)}</div>
@@ -1227,13 +1303,14 @@ function stageHTML(g,me){
       ${mode==='local'?`<button class="btn primary" data-a="local-again">もう一度遊ぶ</button>`:isHost()?`<button class="btn primary" data-a="backLobby" ${dis}>ルームに戻って次のゲームへ</button>`:`<p class="note">ホストが次のゲームを準備します。</p>`}</div>`;
   }
   if(!mine){
-    const W={scoutTarget:'船員を引き抜く相手を選んでいます',recruit:'船員を募集しています',start:'カードを引こうとしています',choose:'行動を選んでいます',raidTarget:'略奪する相手を選んでいます',raidPick:'略奪する宝箱を選んでいます',ghostTarget:'幽霊船で狙う相手を選んでいます',bet:'賭けるか迷っています',deep:'深海で宝箱を選んでいます',chart:'海図を読んでいます'};
+    const W={stormsea:'嵐の海域で宝箱を引き上げています',sell:'闇の買い取りに宝箱を出しています',toll:'海賊への払い方を選んでいます',tollGive:'海賊に差し出す宝箱を選んでいます',castaway:'漂流者を助けるか迷っています',scoutTarget:'船員を引き抜く相手を選んでいます',recruit:'船員を募集しています',start:'カードを引こうとしています',choose:'行動を選んでいます',raidTarget:'略奪する相手を選んでいます',raidPick:'略奪する宝箱を選んでいます',ghostTarget:'幽霊船で狙う相手を選んでいます',bet:'賭けるか迷っています',deep:'深海で宝箱を選んでいます',chart:'海図を読んでいます'};
     let shown='';
     if(g.cur&&g.cur.t==='h'&&g.phase!=='start')shown=cardHTML(g.cur);
     else if(g.phase==='choose')shown=`<div class="card back"><div>アクション<br>カード</div></div>`;
     else if(g.cur&&g.phase==='start')shown=`<div class="cardwrap prev"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`;
     const drv=g.seats[actor].kind==='cpu'?'CPUが操船中':'';
-    return `<div class="prompt">${an}の番<small>${W[g.phase]||'考えています…'}${drv?'　'+drv:''}</small></div><div class="cards">${shown}</div>`;
+    const extra=g.phase==='stormsea'?`<div class="note" style="margin:0">引き上げた宝箱 <b class="num">${g.sub.got.length}</b> 個（まだ船には積んでいない）</div>`:'';
+    return `<div class="prompt">${an}の番<small>${W[g.phase]||'考えています…'}${drv?'　'+drv:''}</small></div>${extra}<div class="cards">${shown}</div>`;
   }
   switch(g.phase){
     case 'start':return `<div class="prompt">${an}の番<small>共通の山札から1枚引いて、航路を進もう。</small></div>
@@ -1245,6 +1322,25 @@ function stageHTML(g,me){
     case 'recruit':return `<div class="prompt">船員募集<small>いまの船員は${crewOf(p)}人（最大4人）。金貨3枚を払えば必ず雇える。払わなければ50%。</small></div>
       <div class="choices"><button class="btn primary" data-a="recruit" data-pay="1" ${busy||p.gold<3?'disabled':''}>金貨3枚を払って雇う</button><button class="btn" data-a="recruit" data-pay="0" ${dis}>払わずに声をかける（50%）</button></div>
       ${p.gold<3?'<p class="note" style="margin:0">金貨が3枚未満なので、払って雇うことはできません。</p>':''}`;
+    case 'stormsea':{const got=g.sub.got;
+      return `<div class="prompt">嵐の海域へ<small>続けるとサイコロを振る。1が出たら、ここで引き上げた宝箱をすべて失う（最大3個）。</small></div>
+      <div class="choices" aria-label="引き上げた宝箱">${got.map(c=>`<svg width="62" height="56" viewBox="0 0 62 56" aria-hidden="true">${chestOpen(c,1,1)}</svg>`).join('')}</div>
+      <div class="choices"><button class="btn primary" data-a="storm" data-cont="1" ${busy||got.length>=3?'disabled':''}>続ける（サイコロ・1で全部失う）</button><button class="btn" data-a="storm" data-cont="0" ${dis}>やめて${got.length}個持ち帰る</button></div>`;}
+    case 'sell':{const n=g.sub.order.length;
+      return `<div class="prompt">闇の買い取り<small>宝箱を伏せて混ぜました。1つ選ぶと、中身に関係なく金貨2枚で売れます。</small></div>
+      <div class="chests">${busy?'':g.sub.order.map((_,i)=>chestMini({v:0},{btn:true,i,big:true}).replace('data-a="raidPick"','data-a="sellPick"').replace(/中身の見えない宝箱/g,'伏せた宝箱')).join('')}</div>`;}
+    case 'toll':{const has=p.chests.length>0;
+      return `<div class="prompt">海賊の通行料<small>払い方を1つ選ぶ。いまの金貨 ${p.gold} 枚、宝箱 ${p.chests.length} 個。</small></div>
+      <div class="choices"><button class="btn" data-a="toll" data-how="pay" ${busy||p.gold<2?'disabled':''}>金貨2枚を払う</button><button class="btn" data-a="toll" data-how="give" ${busy||!has?'disabled':''}>宝箱を1個差し出す</button><button class="btn primary" data-a="toll" data-how="fight" ${dis}>戦う（偶数で宝箱+1、奇数で宝箱−2）</button></div>
+      <div class="cards">${cardHTML(g.cur,{small:true})}</div>`;}
+    case 'tollGive':
+      return `<div class="prompt">海賊に差し出す宝箱を選ぶ<small>中身を知っているのはあなただけ。</small></div>
+      <div class="choices">${p.chests.map((c,i)=>`<button class="btn ico-btn" data-a="tollGive" data-i="${i}" ${dis}><svg width="62" height="56" viewBox="0 0 62 56" aria-hidden="true">${chestOpen(c,1,1)}</svg></button>`).join('')}</div>`;
+    case 'castaway':{const full=crewTotal(p)>=MAXCREW;
+      return `<div class="prompt">漂流者<small>助けると船員が1人増える（いま${crewOf(p)}人）。代わりに食料として、いちばん安い宝箱を1個失う。</small></div>
+      <div class="choices"><button class="btn primary" data-a="castaway" data-rescue="1" ${busy||full?'disabled':''}>助ける</button><button class="btn" data-a="castaway" data-rescue="0" ${dis}>見捨てる</button></div>
+      ${full?'<p class="note" style="margin:0">船員が満員なので、助けることはできません。</p>':''}
+      <div class="cards">${cardHTML(g.cur,{small:true})}</div>`;}
     case 'scoutTarget':{
       const t=idx(g).filter(i=>i!==actor&&crewOf(g.P[i])>0);
       return `<div class="prompt">どの船から船員を引き抜く？<small>選んだ相手の船員が1人減り、あなたの船員が1人増えます（いまは${crewOf(p)}人）。</small></div>
@@ -1277,23 +1373,24 @@ const DIE_ROT={1:[0,0],6:[0,180],3:[0,-90],4:[0,90],2:[-90,0],5:[90,0]};
 function hideDice(){diceTimers.forEach(clearTimeout);diceTimers=[];const el=document.getElementById('dice');if(el){el.hidden=true;el.innerHTML=''}diceUntil=0}
 /* サイコロの結果（航海日誌の行）から演出を出す。全員の画面で同じ目が出る */
 function showDice(e){
-  const m=/サイコロは(\d)。(.+?)は金貨([+−-]\d)（計(\d+)）/.exec(e.t);if(!m)return;
-  const v=+m[1],who=m[2],good=e.c==='good';
+  let v,who,title,head,res;const good=e.c==='good';
+  if(e.dice){({v,title,head,res}=e.dice);who=e.t.slice(('サイコロは'+v+'。').length,e.t.length-res.length-1)}
+  else{const m=/サイコロは(\d)。(.+?)は金貨([+−-]\d)（計(\d+)）/.exec(e.t);if(!m)return;v=+m[1];who=m[2];title='賭けの酒場';head=(v%2?'奇数':'偶数')+'！';res=`金貨${m[3]}（計${m[4]}枚）`}
   const el=document.getElementById('dice');if(!el)return;
   hideDice();
   const faces=[1,2,3,4,5,6].map(f=>`<div class="face f${f}">${[...Array(9)].map((_,k)=>PIPS[f].includes(k)?`<i class="${f===1?'red':''}"></i>`:'<span></span>').join('')}</div>`).join('');
-  el.innerHTML=`<div class="dice-box" role="status" aria-live="polite"><div class="dice-who">${esc(who)}の賭け</div>
+  el.innerHTML=`<div class="dice-box" role="status" aria-live="polite"><div class="dice-who">${esc(who)}　${esc(title)}</div>
     <div class="dice-stage"><div class="die-wrap"><div class="die" id="die">${faces}</div></div></div><div class="dice-shadow" aria-hidden="true"></div>
-    <div class="dice-res ${good?'good':'bad'}" id="dice-res">${v}の目　${v%2?'奇数':'偶数'}！<small>金貨${m[3]}（計${m[4]}枚）</small></div></div>`;
+    <div class="dice-res ${good?'good':'bad'}" id="dice-res">${v}の目　${esc(head)}<small>${esc(res)}</small></div></div>`;
   el.hidden=false;
   const die=document.getElementById('die'),[rx,ry]=DIE_ROT[v];
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const res=document.getElementById('dice-res');
-  if(reduce){die.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(0deg)`;res.classList.add('show')}
+  const resEl=document.getElementById('dice-res');
+  if(reduce){die.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(0deg)`;resEl.classList.add('show')}
   else{
     die.style.transform=`rotateX(${rx-720-360*Math.floor(Math.random()*2)}deg) rotateY(${ry-1080+90*Math.floor(Math.random()*4)}deg) rotateZ(${-360+Math.round(Math.random()*120)}deg)`;
     void die.offsetWidth;die.classList.add('roll');die.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(0deg)`;
-    diceTimers.push(setTimeout(()=>res.classList.add('show'),1350));
+    diceTimers.push(setTimeout(()=>resEl.classList.add('show'),1350));
   }
   diceUntil=Date.now()+3000;
   diceTimers.push(setTimeout(hideDice,3000));
@@ -1401,6 +1498,11 @@ document.addEventListener('click',e=>{
     case 'raidTarget':perform({type:'raidTarget',t:+d.t});break;
     case 'ghostTarget':perform({type:'ghostTarget',t:+d.t});break;
     case 'scoutTarget':perform({type:'scoutTarget',t:+d.t});break;
+    case 'storm':perform({type:'storm',cont:d.cont==='1'});break;
+    case 'sellPick':perform({type:'sell',i:+d.i});break;
+    case 'toll':perform({type:'toll',how:d.how});break;
+    case 'tollGive':perform({type:'tollGive',i:+d.i});break;
+    case 'castaway':perform({type:'castaway',rescue:d.rescue==='1'});break;
     case 'raidPick':perform({type:'raidPick',i:+d.i});break;
     case 'deepPick':perform({type:'deepPick',i:+d.i});break;
     case 'chart':perform({type:'chart',swap:d.swap==='1'});break;
