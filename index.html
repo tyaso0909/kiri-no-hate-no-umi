@@ -172,6 +172,14 @@ details.rules ul{padding-left:1.2em;margin:8px 0;font-size:14px}
 button.opt{border-color:var(--card-ink);cursor:pointer}
 button.opt:hover:not(:disabled){background:#fbe6b0;transform:translateY(-1px)}
 .card .opts{display:grid;gap:5px}
+.opt.used{outline:2.5px solid #b5432d;outline-offset:1px}
+.opt.dimmed{opacity:.4}
+.prevchip{display:none}
+html.land .prevchip{display:inline-flex;align-items:center;gap:5px;justify-self:start;max-width:100%;border:1.5px solid var(--line);border-radius:999px;padding:2px 10px 2px 8px;background:var(--panel);font-size:12px;line-height:1.4}
+html.land .prevchip .pv{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+html.land .prevchip .lb{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.land .prevchip.good .lb{color:var(--good)}html.land .prevchip.bad .lb{color:var(--bad)}html.land .prevchip.trick .lb{color:var(--trick)}
+html.land .prevchip svg{flex:none}
 .opt.locked{flex-direction:row;align-items:center;gap:6px;opacity:.6;border-style:dashed;padding:4px 9px}
 .opt.locked b{font-size:14px;color:#6b7b85}
 .opt.locked .need{margin-left:auto;font-size:10px;color:#6b7b85;white-space:nowrap}
@@ -516,7 +524,7 @@ function clockwiseFrom(s,start){const n=s.P.length;return Array.from({length:n},
 
 function resolveHap(s,card){
   const me=s.turn,h=HAP[card.k];
-  s.cur=card;
+  s.cur=card;s.lastUse={hap:card.k,who:me};
   log(s,`${nm(s,me)}：ハプニング「${h.n}」`,h.c);
   const done=()=>{s.discard.push(card);endTurn(s)};
   switch(card.k){
@@ -597,7 +605,7 @@ function act(s,a){
   switch(a.type){
     case 'draw':{if(s.phase!=='start')return false;const c=drawCard(s);if(!c){log(s,'山札も捨て札も空っぽだ。','sys');endTurn(s);return true}
       s.cur=c;if(c.t==='h')resolveHap(s,c);else{log(s,`${nm(s,me)}はアクションカードを引いた。`,'sys');s.phase='choose';s.sub={sail:false}}return true}
-    case 'use':{if(s.phase!=='choose'||!s.cur||s.cur.t!=='a'||!avail(s,me,s.cur).includes(a.opt))return false;s.discard.push(s.cur);return doOpt(s,a.opt)}
+    case 'use':{if(s.phase!=='choose'||!s.cur||s.cur.t!=='a'||!avail(s,me,s.cur).includes(a.opt))return false;s.discard.push(s.cur);s.lastUse={opt:a.opt,who:me};return doOpt(s,a.opt)}
     case 'raidTarget':if(s.phase!=='raidTarget'||a.t===me||!s.P[a.t]||!s.P[a.t].chests.length||safe(s,a.t))return false;s.sub={t:a.t};s.phase='raidPick';return true;
     case 'raidPick':{if(s.phase!=='raidPick')return false;const tp=s.P[s.sub.t];const c=tp.chests[a.i];if(!c)return false;tp.chests.splice(a.i,1);
       log(s,c.king?`${nm(s,me)}が${nm(s,s.sub.t)}から王の宝箱を奪った！`:`${nm(s,me)}が${nm(s,s.sub.t)}から宝箱を1個奪った。`,'trick');giveChest(s,me,c);endTurn(s);return true}
@@ -1351,7 +1359,18 @@ function holdPanel(g,me){
 }
 const lockIcon='<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><rect x="1.5" y="6" width="9" height="7" rx="1.2" fill="#8a9aa4"/><path d="M3.5 6 V4 a2.5 2.5 0 0 1 5 0 V6" fill="none" stroke="#8a9aa4" stroke-width="1.4"/></svg>';
 /* crew を渡すと、上から「船員＋1」個だけ使え、残りは鍵付きで表示 */
-function cardHTML(card,{btn,small,crew}={}){
+/* 直前のカード：スマホは1行の表示、パソコンは使われた行動を強調したカード */
+function prevHTML(g){
+  if(!g.cur)return '';
+  const u=g.lastUse||{},hasWho=u.who!=null&&g.seats[u.who];const who=hasWho?esc(nm(g,u.who)):'';
+  let label,icon,cls='';
+  if(g.cur.t==='h'){const h=HAP[g.cur.k];label=`ハプニング「${h.n}」`;icon=hapIcon(h.c);cls=h.c}
+  else{label=u.opt?OPT[u.opt].n:'アクションカード';icon=u.opt?optIcon(u.opt):''}
+  const chip=`<div class="prevchip ${cls}"><span class="pv">直前</span>${hasWho?pennant(SEATC[u.who%4],15):''}${who?`<b>${who}</b>`:''}${icon}<span class="lb">${label}</span></div>`;
+  const cap=g.cur.t==='a'&&u.opt&&who?`直前：${who}が「${OPT[u.opt].n}」を使った`:who?`直前：${who}のカード`:'直前に使われたカード';
+  return chip+`<div class="cardwrap prev"><span class="cap">${cap}</span>${cardHTML(g.cur,{small:true,used:g.cur.t==='a'?u.opt:null})}</div>`;
+}
+function cardHTML(card,{btn,small,crew,used}={}){
   if(!card)return '';
   if(card.t==='h'){const h=HAP[card.k];
     return `<div class="card h ${h.c} ${small?'small':''}"><div class="kind"><span>ハプニング</span><span>${HAP_LABEL[h.c]}</span></div><div class="title">${hapIcon(h.c)}${h.n}</div><div class="desc">${h.d}</div></div>`}
@@ -1359,7 +1378,7 @@ function cardHTML(card,{btn,small,crew}={}){
   const opts=card.o.map((o,k)=>{
     if(k>=n)return `<div class="opt locked">${lockIcon}<b>${OPT[o].n}</b><span class="need">船員${k}人で使える</span></div>`;
     const inner=small?`<span class="on">${optIcon(o)}<b>${OPT[o].n}</b></span>`:`<span class="on">${optIcon(o)}<b>${OPT[o].n}</b></span><span class="d">${OPT[o].d}</span>`;
-    const cls=`opt ${o==='cash'?'cashopt':''}`;
+    const cls=`opt ${o==='cash'?'cashopt':''} ${used?(o===used?'used':'dimmed'):''}`;
     return btn?`<button class="${cls}" data-a="use" data-opt="${o}" ${busy?'disabled':''}>${inner}</button>`:`<div class="${cls}">${inner}</div>`;
   }).join('');
   return `<div class="card act ${small?'small':''}"><div class="kind"><span>アクション</span><span>${crew==null?'行動5つ':`${n}つから1つ選ぶ`}</span></div><div class="opts">${opts}</div></div>`;
@@ -1377,7 +1396,7 @@ function stageHTML(g,me){
     let shown='';
     if(g.cur&&g.cur.t==='h'&&g.phase!=='start')shown=cardHTML(g.cur);
     else if(g.phase==='choose')shown=`<div class="card back"><div>アクション<br>カード</div></div>`;
-    else if(g.cur&&g.phase==='start')shown=`<div class="cardwrap prev"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`;
+    else if(g.cur&&g.phase==='start')shown=`${prevHTML(g)}`;
     const drv=g.seats[actor].kind==='cpu'?'CPUが操船中':'';
     const extra=g.phase==='stormsea'?`<div class="note" style="margin:0">引き上げた宝箱 <b class="num">${g.sub.got.length}</b> 個（まだ船には積んでいない）</div>`:'';
     return `<div class="prompt">${an}の番<small>${W[g.phase]||'考えています…'}${drv?'　'+drv:''}</small></div>${extra}<div class="cards">${shown}</div>`;
@@ -1385,7 +1404,7 @@ function stageHTML(g,me){
   switch(g.phase){
     case 'start':return `<div class="prompt">${an}の番<small>共通の山札から1枚引いて、航路を進もう。</small></div>
       <div class="choices"><button class="btn primary big" data-a="draw" ${dis}>カードを引く</button></div>
-      <div class="cards">${g.cur?`<div class="cardwrap prev"><span class="cap">直前に使われたカード</span>${cardHTML(g.cur,{small:true})}</div>`:''}</div>`;
+      <div class="cards">${g.cur?`${prevHTML(g)}`:''}</div>`;
     case 'choose':
       return `<div class="prompt">${an}の番<small>船員${crewOf(p)}人なので、上から${Math.min(5,crewOf(p)+1)}つの行動から1つ選べる。</small></div>
       <div class="cards">${cardHTML(g.cur,{btn:true,crew:crewOf(p)})}</div>`;
